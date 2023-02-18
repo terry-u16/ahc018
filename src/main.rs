@@ -1,7 +1,16 @@
+mod common;
+mod input;
+mod output;
+
+use std::io::{self, BufReader};
+
+use proconio::source::line::LineSource;
 #[allow(unused_imports)]
 use proconio::*;
 #[allow(unused_imports)]
 use rand::prelude::*;
+
+use crate::input::Input;
 
 pub trait ChangeMinMax {
     fn change_min(&mut self, v: Self) -> bool;
@@ -30,9 +39,9 @@ macro_rules! mat {
     ($e:expr; $d:expr $(; $ds:expr)+) => { vec![mat![$e $(; $ds)*]; $d] };
 }
 
-#[derive(Debug, Clone)]
-struct Input {}
-
 fn main() {
-    todo!();
+    let mut stdin = LineSource::new(BufReader::new(io::stdin()));
+    let input = Input::read(&mut stdin);
+
+    dbg!(input);
 }

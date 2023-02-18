@@ -6,10 +6,6 @@ edition = "2018"
 [package.metadata.cargo-compete.bin]
 ahc018-a = { alias = "a", problem = "https://atcoder.jp/contests/ahc018/tasks/ahc018_a" }
 
-[[bin]]
-name = "ahc018-a"
-path = "src/bin/a.rs"
-
 [dependencies]
 num = "=0.2.1"
 num-bigint = "=0.2.6"
