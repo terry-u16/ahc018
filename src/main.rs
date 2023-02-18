@@ -1,9 +1,12 @@
 mod common;
+mod init_solution;
 mod input;
 mod output;
 
-use std::io::{self, BufReader};
+use std::{io::{self, BufReader}, time::Instant};
 
+use init_solution::InitSolver;
+use output::{output, DiggingResult};
 use proconio::source::line::LineSource;
 #[allow(unused_imports)]
 use proconio::*;
@@ -42,6 +45,19 @@ macro_rules! mat {
 fn main() {
     let mut stdin = LineSource::new(BufReader::new(io::stdin()));
     let input = Input::read(&mut stdin);
+    let mut solver = InitSolver::new(&input);
 
-    dbg!(input);
+    loop {
+        let action = solver.get_next_action(&input);
+        let result = output(action, "", &mut stdin);
+
+        if let DiggingResult::Completed = result {
+            break;
+        }
+
+        solver.update(result);
+    }
+
+    let elapsed = Instant::now() - input.since;
+    eprintln!("{:.3}s", elapsed.as_secs_f64());
 }

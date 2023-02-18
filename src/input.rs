@@ -1,4 +1,4 @@
-use std::io::BufRead;
+use std::{io::BufRead, time::Instant};
 
 use proconio::{input, source::line::LineSource};
 
@@ -12,6 +12,7 @@ pub struct Input {
     pub exhausting_energy: i32,
     pub waters: Vec<Coordinate>,
     pub houses: Vec<Coordinate>,
+    pub since: Instant,
 }
 
 impl Input {
@@ -23,6 +24,8 @@ impl Input {
             house_count: usize,
             exhausting_energy: i32,
         }
+
+        let since = Instant::now();
 
         let mut waters = vec![];
 
@@ -38,7 +41,7 @@ impl Input {
 
         let mut houses = vec![];
 
-        for _ in 0..water_count {
+        for _ in 0..house_count {
             input! {
                 from &mut source,
                 row: usize,
@@ -55,6 +58,7 @@ impl Input {
             exhausting_energy,
             waters,
             houses,
+            since,
         }
     }
 }
