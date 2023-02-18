@@ -1,4 +1,5 @@
 import random
+from typing import Tuple
 
 import numpy as np
 from PIL import Image
@@ -35,7 +36,7 @@ def write_cost_img(path: str, img: np.ndarray):
     pil_img.save(path)
 
 
-def gen_sampled_img(img: np.ndarray) -> np.ndarray:
+def gen_sampled_img(img: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
     seen = set()
     sum_val = 0.0
     rand_pow = random.uniform(MIN_SAMPLING_POW, MAX_SAMPLING_POW)
@@ -50,14 +51,17 @@ def gen_sampled_img(img: np.ndarray) -> np.ndarray:
 
     avg = sum_val / len(seen)
     sampled_img = np.full_like(img, avg)
+    flag_img = np.zeros_like(img)
 
     for row, col in seen:
         sampled_img[row, col] = img[row, col]
+        flag_img[row, col] = 1
 
-    return sampled_img
+    return sampled_img, flag_img
 
 for seed in tqdm(range(10000)):
     img = read_image(f"data/learning_in/{seed:0>4}.txt")
     write_cost_img(f"data/image_y/{seed:0>4}.bmp", img)
-    sampled_img = gen_sampled_img(img)
-    write_cost_img(f"data/image_x/{seed:0>4}.bmp", sampled_img)
+    sampled_img, flag_img = gen_sampled_img(img)
+    write_cost_img(f"data/image_x0/{seed:0>4}.bmp", sampled_img)
+    write_cost_img(f"data/image_x1/{seed:0>4}.bmp", flag_img)

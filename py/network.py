@@ -39,7 +39,7 @@ class UNet_2D(nn.Module):
     def __init__(self):
         super().__init__()
         # two-convs
-        self.TCB1 = TwoConvBlock(1, 32)
+        self.TCB1 = TwoConvBlock(2, 32)
         self.TCB2 = TwoConvBlock(32, 64)
         self.TCB3 = TwoConvBlock(64, 128)
 
