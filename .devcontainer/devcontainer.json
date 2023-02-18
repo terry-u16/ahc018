@@ -1,0 +1,17 @@
+{
+    "name": "ahc018",
+    "build": {
+        "dockerfile": "../Dockerfile"
+    },
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "ms-python.python"
+            ]
+        }
+    },
+    "runArgs": [
+        "--gpus",
+        "all"
+    ]
+}

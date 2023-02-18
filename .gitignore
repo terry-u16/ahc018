@@ -3,3 +3,5 @@
 /*.exe
 /*.txt
 /expanded.rs
+.hypothesis
+/tools/seeds.txt
