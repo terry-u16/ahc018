@@ -1,5 +1,9 @@
 use itertools::Itertools;
-use ndarray::{s, Array, Array1, Array2, Array3, Array4};
+use ndarray::{s, Array, Array1, Array2, Array3, Array4, Axis};
+
+pub trait NNModule {
+    fn apply(&self, x: &Array3<f32>) -> Array3<f32>;
+}
 
 #[derive(Debug, Clone)]
 struct Conv2d {
@@ -24,8 +28,11 @@ impl Conv2d {
             bias,
         }
     }
+}
 
+impl NNModule for Conv2d {
     fn apply(&self, x: &Array3<f32>) -> Array3<f32> {
+        assert_eq!(x.len_of(Axis(0)), self.in_channels);
         let x_shape = x.shape();
         let mut y = Array::zeros((self.out_channels, x_shape[1], x_shape[2]));
         let pads = x
@@ -72,7 +79,7 @@ impl Conv2d {
 
 struct Relu;
 
-impl Relu {
+impl NNModule for Relu {
     fn apply(&self, x: &Array3<f32>) -> Array3<f32> {
         let y = x.map(|x| x.max(0.0));
         y
@@ -83,7 +90,7 @@ impl Relu {
 mod test {
     use ndarray::{array, Array3, Array4};
 
-    use super::{Conv2d, Relu};
+    use super::{Conv2d, NNModule, Relu};
 
     #[test]
     fn conv2d() {
