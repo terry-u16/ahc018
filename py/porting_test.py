@@ -31,5 +31,24 @@ def conv2d():
     for param in model.parameters():
         print(param.flatten())
 
+def relu():
+    N_IN = 4
+    C_IN = 2
+    in_array = np.random.rand(C_IN, N_IN, N_IN)
+    in_array = in_array * 2 - 1
+    in_tensor = torch.tensor(in_array, dtype=torch.float32)
+    print("=== INPUT ===")
+    print(in_tensor.flatten())
+
+    model = nn.ReLU()
+    out_tensor = model(in_tensor)
+    print("=== OUTPUT ===")
+    print(out_tensor.flatten())
+
+    print("=== MODEL ===")
+    for param in model.parameters():
+        print(param.flatten())
+
 set_seed()
-conv2d()
+#conv2d()
+relu()

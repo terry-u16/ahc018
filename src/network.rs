@@ -2,9 +2,10 @@ use itertools::Itertools;
 use ndarray::{s, Array, Array1, Array2, Array3, Array4};
 
 #[derive(Debug, Clone)]
-pub struct Conv2d {
+struct Conv2d {
     in_channels: usize,
     out_channels: usize,
+    /// [C_out, C_in, K, K]
     weights: Array4<f32>,
     bias: Array1<f32>,
 }
@@ -24,7 +25,7 @@ impl Conv2d {
         }
     }
 
-    pub fn apply(&self, x: &Array3<f32>) -> Array3<f32> {
+    fn apply(&self, x: &Array3<f32>) -> Array3<f32> {
         let x_shape = x.shape();
         let mut y = Array::zeros((self.out_channels, x_shape[1], x_shape[2]));
         let pads = x
@@ -69,11 +70,20 @@ impl Conv2d {
     }
 }
 
+struct Relu;
+
+impl Relu {
+    fn apply(&self, x: &Array3<f32>) -> Array3<f32> {
+        let y = x.map(|x| x.max(0.0));
+        y
+    }
+}
+
 #[cfg(test)]
 mod test {
     use ndarray::{array, Array3, Array4};
 
-    use super::Conv2d;
+    use super::{Conv2d, Relu};
 
     #[test]
     fn conv2d() {
@@ -116,6 +126,38 @@ mod test {
 
         let conv2d = Conv2d::new(2, 3, weights, bias);
         let y = conv2d.apply(&x);
+
+        for (expected, actual) in expected_y.iter().zip(y.iter()) {
+            assert!((expected - actual).abs() < 1e-3);
+        }
+    }
+
+    #[test]
+    fn relu() {
+        let x = Array3::from_shape_vec(
+            [2, 4, 4],
+            vec![
+                -0.2509, 0.9014, 0.4640, 0.1973, -0.6880, -0.6880, -0.8838, 0.7324, 0.2022, 0.4161,
+                -0.9588, 0.9398, 0.6649, -0.5753, -0.6364, -0.6332, -0.3915, 0.0495, -0.1361,
+                -0.4175, 0.2237, -0.7210, -0.4157, -0.2673, -0.0879, 0.5704, -0.6007, 0.0285,
+                0.1848, -0.9071, 0.2151, -0.6590,
+            ],
+        )
+        .unwrap();
+
+        let expected_y = Array3::from_shape_vec(
+            [2, 4, 4],
+            vec![
+                0.0000, 0.9014, 0.4640, 0.1973, 0.0000, 0.0000, 0.0000, 0.7324, 0.2022, 0.4161,
+                0.0000, 0.9398, 0.6649, 0.0000, 0.0000, 0.0000, 0.0000, 0.0495, 0.0000, 0.0000,
+                0.2237, 0.0000, 0.0000, 0.0000, 0.0000, 0.5704, 0.0000, 0.0285, 0.1848, 0.0000,
+                0.2151, 0.0000,
+            ],
+        )
+        .unwrap();
+
+        let relu = Relu;
+        let y = relu.apply(&x);
 
         for (expected, actual) in expected_y.iter().zip(y.iter()) {
             assert!((expected - actual).abs() < 1e-3);
