@@ -25,7 +25,7 @@ class UpConv(nn.Module):
         super().__init__()
         self.up = nn.Upsample(scale_factor=2, mode="bilinear", align_corners=True)
         self.bn1 = nn.BatchNorm2d(in_channels)
-        self.conv = nn.Conv2d(in_channels, out_channels, kernel_size = 2, padding="same")
+        self.conv = nn.Conv2d(in_channels, out_channels, kernel_size=3, padding="same")
         self.bn2 = nn.BatchNorm2d(out_channels)
 
     def forward(self, x):
