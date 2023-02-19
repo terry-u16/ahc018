@@ -103,9 +103,25 @@ def upsample2d():
     print("=== OUTPUT ===")
     print(out_tensor.flatten())
 
+
+def max_pool_2d():
+    N_IN = 4
+    C_IN = 2
+    in_tensor = torch.tensor(np.random.rand(1, C_IN, N_IN, N_IN), dtype=torch.float32)
+    print("=== INPUT ===")
+    print(in_tensor.flatten())
+
+    model = nn.MaxPool2d(2, stride = 2)
+
+    out_tensor = model(in_tensor)
+    print("=== OUTPUT ===")
+    print(out_tensor.flatten())
+
+
 set_seed()
 #conv2d()
 #relu()
-sigmoid()
+#sigmoid()
 #batch_norm2d()
 #upsample2d()
+max_pool_2d()

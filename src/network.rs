@@ -147,7 +147,7 @@ impl NNModule for BilinearX2 {
         for (x, mut y) in izip!(x.outer_iter(), y.outer_iter_mut()) {
             let y_shape = y.shape();
             let y_shape_1 = y_shape[0];
-            let y_shape_2 = y_shape[0];
+            let y_shape_2 = y_shape[1];
 
             for row in 0..y_shape_1 {
                 let pos_y = row as f64 * (x_shape[1] - 1) as f64 / (y_shape_1 - 1) as f64;
@@ -177,11 +177,44 @@ impl NNModule for BilinearX2 {
     }
 }
 
+/// 2x2のkernelでstride=2のMaxPoolingを行う
+#[derive(Debug, Clone, Copy)]
+struct MaxPoolX2;
+
+impl NNModule for MaxPoolX2 {
+    fn apply(&self, x: &Array3<f32>) -> Array3<f32> {
+        let x_shape = x.shape();
+        assert!(x_shape[1] % 2 == 0);
+        assert!(x_shape[2] % 2 == 0);
+        let mut y = Array3::zeros((x_shape[0], x_shape[1] / 2, x_shape[2] / 2));
+
+        for (x, mut y) in izip!(x.outer_iter(), y.outer_iter_mut()) {
+            let y_shape = y.shape();
+            let y_shape_1 = y_shape[0];
+            let y_shape_2 = y_shape[1];
+
+            for row in 0..y_shape_1 {
+                for col in 0..y_shape_2 {
+                    let x00 = x[[row * 2, col * 2]];
+                    let x01 = x[[row * 2, col * 2 + 1]];
+                    let x10 = x[[row * 2 + 1, col * 2]];
+                    let x11 = x[[row * 2 + 1, col * 2 + 1]];
+
+                    let max = x00.max(x01).max(x10).max(x11);
+                    y[[row, col]] = max;
+                }
+            }
+        }
+
+        y
+    }
+}
+
 #[cfg(test)]
 mod test {
     use ndarray::{array, Array3, Array4};
 
-    use super::{BatchNorm2d, BilinearX2, Conv2d, NNModule, Relu, Sigmoid};
+    use super::{BatchNorm2d, BilinearX2, Conv2d, MaxPoolX2, NNModule, Relu, Sigmoid};
 
     #[test]
     fn conv2d() {
@@ -350,6 +383,36 @@ mod test {
         let y = bilinear.apply(&x);
 
         for (expected, actual) in expected_y.iter().zip(y.iter()) {
+            assert!((expected - actual).abs() < 1e-3);
+        }
+    }
+
+    #[test]
+    fn max_pool_x2() {
+        let x = Array3::from_shape_vec(
+            [2, 4, 4],
+            vec![
+                0.3745, 0.9507, 0.7320, 0.5987, 0.1560, 0.1560, 0.0581, 0.8662, 0.6011, 0.7081,
+                0.0206, 0.9699, 0.8324, 0.2123, 0.1818, 0.1834, 0.3042, 0.5248, 0.4319, 0.2912,
+                0.6119, 0.1395, 0.2921, 0.3664, 0.4561, 0.7852, 0.1997, 0.5142, 0.5924, 0.0465,
+                0.6075, 0.1705,
+            ],
+        )
+        .unwrap();
+
+        let expected_y = Array3::from_shape_vec(
+            [2, 2, 2],
+            vec![
+                0.9507, 0.8662, 0.8324, 0.9699, 0.6119, 0.4319, 0.7852, 0.6075,
+            ],
+        )
+        .unwrap();
+
+        let max_pool = MaxPoolX2;
+        let y = max_pool.apply(&x);
+
+        for (expected, actual) in expected_y.iter().zip(y.iter()) {
+            println!("{} {}", expected, actual);
             assert!((expected - actual).abs() < 1e-3);
         }
     }
