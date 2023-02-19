@@ -57,7 +57,7 @@ def setup_train_val_loaders(data_dir: str, batch_size: int) -> Tuple[DataLoader,
 
     return train_loader, val_loader
 
-def train_1epoch(model: nn.Module, train_loader: DataLoader, lossfun, optimizer, device) -> float:
+def train_1epoch(model: nn.Module, train_loader: DataLoader, lossfun, optimizer, lr_scheduler, device) -> float:
     model.train()
     total_loss = 0.0
 
@@ -72,6 +72,7 @@ def train_1epoch(model: nn.Module, train_loader: DataLoader, lossfun, optimizer,
         optimizer.step()
 
         total_loss += loss.item() * x.size(0)
+        lr_scheduler.step()
 
     avg_loss = total_loss / len(train_loader.dataset)
     return avg_loss
@@ -95,16 +96,25 @@ def validate_1epoch(model: nn.Module, val_loader: DataLoader, lossfun, device) -
     return avg_loss
 
 
-def train(model: nn.Module, optimizer, train_loader: DataLoader, val_loader: DataLoader, n_epochs: int, device):
+def train(
+    model: nn.Module, 
+    optimizer,
+    train_loader: DataLoader, 
+    val_loader: DataLoader, 
+    lr_scheduler,
+    n_epochs: int, 
+    device):
     lossfun = torch.nn.L1Loss()
 
     for epoch in tqdm(range(n_epochs)):
         train_loss = train_1epoch(
-            model, train_loader, lossfun, optimizer, device
+            model, train_loader, lossfun, optimizer, lr_scheduler, device
         )
         val_loss = validate_1epoch(model, val_loader, lossfun, device)
+
+        lr = optimizer.param_groups[0]["lr"]
         print(
-            f"epoch={epoch}, train loss={train_loss}, val loss={val_loss}"
+            f"epoch={epoch}, train loss={train_loss}, val loss={val_loss}, lr={lr}"
         )
 
 def predict(model, loader, device):
@@ -124,10 +134,12 @@ def train_unet(data_dir: str, batch_size: int, device: torch.device) -> nn.Modul
     model = network.UNet_2D()
     model.to(device)
 
-    optimizer = torch.optim.SGD(model.parameters(), lr=0.01, momentum=0.9)
+    n_epochs = 10
     train_loader, val_loader = setup_train_val_loaders(data_dir, batch_size)
-    train(model, optimizer, train_loader, val_loader, n_epochs=10, device=device)
-
+    n_iterations = len(train_loader) * n_epochs
+    optimizer = torch.optim.AdamW(model.parameters(), lr=0.01, weight_decay=0.0001)
+    lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, n_iterations)
+    train(model, optimizer, train_loader, val_loader, n_epochs=n_epochs, lr_scheduler=lr_scheduler, device=device)
     return model
 
 def predict_unet(data_dir: str, model: nn.Module, batch_size: int, device) -> List[np.ndarray]:
@@ -136,11 +148,17 @@ def predict_unet(data_dir: str, model: nn.Module, batch_size: int, device) -> Li
     preds = predict(model, val_loader, device)
     return preds
 
-
 def run(data_dir: str, device: torch.device):
     batch_size = 32
     model = train_unet(data_dir, batch_size, device)
     preds = predict_unet(data_dir, model, batch_size, device)
+
+    params = 0
+    for p in model.parameters():
+        if p.requires_grad:
+            params += p.numel()
+
+    print(f"params: {params}")
 
     for i, pred in enumerate(preds):
         pred = np.round(pred * 255)
