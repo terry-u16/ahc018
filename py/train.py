@@ -134,7 +134,7 @@ def train_unet(data_dir: str, batch_size: int, device: torch.device) -> nn.Modul
     model = network.UNet_2D()
     model.to(device)
 
-    n_epochs = 10
+    n_epochs = 20
     train_loader, val_loader = setup_train_val_loaders(data_dir, batch_size)
     n_iterations = len(train_loader) * n_epochs
     optimizer = torch.optim.AdamW(model.parameters(), lr=0.01, weight_decay=0.0001)
@@ -159,6 +159,8 @@ def run(data_dir: str, device: torch.device):
             params += p.numel()
 
     print(f"params: {params}")
+
+    torch.save(model.state_dict(), f"{data_dir}/model_weight.pth")
 
     for i, pred in enumerate(preds):
         pred = np.round(pred * 255)

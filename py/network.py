@@ -39,23 +39,23 @@ class UNet_2D(nn.Module):
     def __init__(self):
         super().__init__()
         # two-convs
-        self.TCB1 = TwoConvBlock(2, 8)
-        self.TCB2 = TwoConvBlock(8, 16)
-        self.TCB3 = TwoConvBlock(16, 32)
+        self.TCB1 = TwoConvBlock(2, 4)
+        self.TCB2 = TwoConvBlock(4, 8)
+        self.TCB3 = TwoConvBlock(8, 16)
 
-        self.TCB4 = TwoConvBlock(32, 64)
+        self.TCB4 = TwoConvBlock(16, 32)
 
-        self.TCB5 = TwoConvBlock(64, 32)
-        self.TCB6 = TwoConvBlock(32, 16)
-        self.TCB7 = TwoConvBlock(16, 8)
+        self.TCB5 = TwoConvBlock(32, 16)
+        self.TCB6 = TwoConvBlock(16, 8)
+        self.TCB7 = TwoConvBlock(8, 4)
         self.maxpool = nn.MaxPool2d(2, stride = 2)
         
         # up-convs
-        self.UC1 = UpConv(64, 32) 
-        self.UC2 = UpConv(32, 16) 
-        self.UC3 = UpConv(16, 8) 
+        self.UC1 = UpConv(32, 16) 
+        self.UC2 = UpConv(16, 8) 
+        self.UC3 = UpConv(8, 4) 
 
-        self.conv1 = nn.Conv2d(8, 1, kernel_size = 1)
+        self.conv1 = nn.Conv2d(4, 1, kernel_size = 1)
         self.sigmoid = nn.Sigmoid()
 
     def forward(self, x):
