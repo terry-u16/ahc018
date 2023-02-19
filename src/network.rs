@@ -140,7 +140,7 @@ struct BilinearX2;
 
 impl NNModule for BilinearX2 {
     fn apply(&self, x: &Array3<f32>) -> Array3<f32> {
-        const EPS: f64 = 1e-10;
+        const EPS: f32 = 1e-5;
         let x_shape = x.shape();
         let mut y = Array3::zeros((x_shape[0], x_shape[1] * 2, x_shape[2] * 2));
 
@@ -150,25 +150,25 @@ impl NNModule for BilinearX2 {
             let y_shape_2 = y_shape[1];
 
             for row in 0..y_shape_1 {
-                let pos_y = row as f64 * (x_shape[1] - 1) as f64 / (y_shape_1 - 1) as f64;
+                let pos_y = row as f32 * (x_shape[1] - 1) as f32 / (y_shape_1 - 1) as f32;
                 let floor_y = (pos_y + EPS).floor() as usize;
                 let ceil_y = (pos_y - EPS).ceil() as usize;
-                let dy = pos_y - floor_y as f64;
+                let dy = pos_y - floor_y as f32;
 
                 for col in 0..y_shape_2 {
-                    let pos_x = col as f64 * (x_shape[2] - 1) as f64 / (y_shape_2 - 1) as f64;
+                    let pos_x = col as f32 * (x_shape[2] - 1) as f32 / (y_shape_2 - 1) as f32;
                     let floor_x = (pos_x + EPS).floor() as usize;
                     let ceil_x = (pos_x - EPS).ceil() as usize;
-                    let dx = pos_x - floor_x as f64;
+                    let dx = pos_x - floor_x as f32;
 
-                    let x00 = x[[floor_y, floor_x]] as f64;
-                    let x01 = x[[floor_y, ceil_x]] as f64;
-                    let x10 = x[[ceil_y, floor_x]] as f64;
-                    let x11 = x[[ceil_y, ceil_x]] as f64;
+                    let x00 = x[[floor_y, floor_x]];
+                    let x01 = x[[floor_y, ceil_x]];
+                    let x10 = x[[ceil_y, floor_x]];
+                    let x11 = x[[ceil_y, ceil_x]];
 
                     let x0 = x00 * (1.0 - dx) + x01 * dx;
                     let x1 = x10 * (1.0 - dx) + x11 * dx;
-                    y[[row, col]] = (x0 * (1.0 - dy) + x1 * dy) as f32;
+                    y[[row, col]] = x0 * (1.0 - dy) + x1 * dy;
                 }
             }
         }
