@@ -1,8 +1,63 @@
 use itertools::{izip, Itertools};
-use ndarray::{s, Array, Array1, Array2, Array3, Array4, Axis};
+use ndarray::{s, stack, Array, Array1, Array2, Array3, Array4, Axis};
 
 pub trait NNModule {
     fn apply(&self, x: &Array3<f32>) -> Array3<f32>;
+}
+
+#[derive(Debug, Clone)]
+pub struct UNet {
+    double_conv1: DoubleConvBlock,
+    double_conv2: DoubleConvBlock,
+    double_conv3: DoubleConvBlock,
+    double_conv4: DoubleConvBlock,
+    double_conv5: DoubleConvBlock,
+    double_conv6: DoubleConvBlock,
+    double_conv7: DoubleConvBlock,
+    up_conv1: UpConvBlock,
+    up_conv2: UpConvBlock,
+    up_conv3: UpConvBlock,
+    last_conv: Conv2d,
+    maxpool: MaxPoolX2,
+    sigmoid: Sigmoid,
+}
+
+impl NNModule for UNet {
+    fn apply(&self, x: &Array3<f32>) -> Array3<f32> {
+        // encoder
+        let x = self.double_conv1.apply(x);
+        let x1 = x.clone();
+        let x = self.maxpool.apply(&x);
+
+        let x = self.double_conv2.apply(&x);
+        let x2 = x.clone();
+        let x = self.maxpool.apply(&x);
+
+        let x = self.double_conv3.apply(&x);
+        let x3 = x.clone();
+        let x = self.maxpool.apply(&x);
+
+        // middle
+        let x = self.double_conv4.apply(&x);
+
+        // decoder
+        let x = self.up_conv1.apply(&x);
+        let x = stack![Axis(0), x3, x];
+        let x = self.double_conv5.apply(&x);
+
+        let x = self.up_conv2.apply(&x);
+        let x = stack![Axis(0), x2, x];
+        let x = self.double_conv6.apply(&x);
+
+        let x = self.up_conv3.apply(&x);
+        let x = stack![Axis(0), x1, x];
+        let x = self.double_conv7.apply(&x);
+
+        let x = self.last_conv.apply(&x);
+        let x = self.sigmoid.apply(&x);
+
+        x
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -39,6 +94,65 @@ impl DoubleConvBlock {
             batch_norm1,
             batch_norm2,
             relu,
+        }
+    }
+
+    fn new_param(in_channels: usize, out_channels: usize, param: DoubleConvBlockParam) -> Self {
+        Self::new(
+            in_channels,
+            out_channels,
+            param.conv1_weight,
+            param.conv1_bias,
+            param.conv2_weight,
+            param.conv2_bias,
+            param.bn1_mean,
+            param.bn1_var,
+            param.bn2_mean,
+            param.bn2_var,
+        )
+    }
+}
+
+#[derive(Debug, Clone)]
+struct DoubleConvBlockParam {
+    conv1_weight: Vec<f32>,
+    conv1_bias: Vec<f32>,
+    conv2_weight: Vec<f32>,
+    conv2_bias: Vec<f32>,
+    bn1_mean: Vec<f32>,
+    bn1_var: Vec<f32>,
+    bn2_mean: Vec<f32>,
+    bn2_var: Vec<f32>,
+}
+
+impl DoubleConvBlockParam {
+    fn new(
+        conv1_weight: &[u8],
+        conv1_bias: &[u8],
+        conv2_weight: &[u8],
+        conv2_bias: &[u8],
+        bn1_mean: &[u8],
+        bn1_var: &[u8],
+        bn2_mean: &[u8],
+        bn2_var: &[u8],
+    ) -> Self {
+        let conv1_weight = to_f32(conv1_weight);
+        let conv1_bias = to_f32(conv1_bias);
+        let conv2_weight = to_f32(conv2_weight);
+        let conv2_bias = to_f32(conv2_bias);
+        let bn1_mean = to_f32(bn1_mean);
+        let bn1_var = to_f32(bn1_var);
+        let bn2_mean = to_f32(bn2_mean);
+        let bn2_var = to_f32(bn2_var);
+        Self {
+            conv1_weight,
+            conv1_bias,
+            conv2_weight,
+            conv2_bias,
+            bn1_mean,
+            bn1_var,
+            bn2_mean,
+            bn2_var,
         }
     }
 }
@@ -321,6 +435,47 @@ impl NNModule for MaxPoolX2 {
     }
 }
 
+fn to_f32(data: &[u8]) -> Vec<f32> {
+    const BASE64_MAP: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    let mut stream = vec![];
+
+    let mut cursor = 0;
+
+    while cursor + 4 <= data.len() {
+        let mut buffer = 0u32;
+
+        for i in 0..4 {
+            let c = data[cursor + i];
+            let shift = 6 * (3 - i);
+
+            for (i, &d) in BASE64_MAP.iter().enumerate() {
+                if c == d {
+                    buffer |= (i as u32) << shift;
+                }
+            }
+        }
+
+        for i in 0..3 {
+            let shift = 8 * (2 - i);
+            let value = (buffer >> shift) as u8;
+            stream.push(value);
+        }
+
+        cursor += 4;
+    }
+
+    let mut result = vec![];
+    cursor = 0;
+
+    while cursor + 4 <= stream.len() {
+        let p = stream.as_ptr() as *const f32;
+        let x = unsafe { *p.offset(cursor as isize / 4) };
+        result.push(x);
+        cursor += 4;
+    }
+
+    result
+}
 #[cfg(test)]
 mod test {
     use ndarray::{array, Array3, Array4};

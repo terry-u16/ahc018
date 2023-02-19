@@ -50,14 +50,14 @@ class UNet_2D(nn.Module):
         self.TCB5 = TwoConvBlock(32, 16)
         self.TCB6 = TwoConvBlock(16, 8)
         self.TCB7 = TwoConvBlock(8, 4)
-        self.maxpool = nn.MaxPool2d(2, stride = 2)
+        self.maxpool = nn.MaxPool2d(2, stride=2)
         
         # up-convs
         self.UC1 = UpConv(32, 16) 
         self.UC2 = UpConv(16, 8) 
         self.UC3 = UpConv(8, 4) 
 
-        self.conv1 = nn.Conv2d(4, 1, kernel_size = 1)
+        self.conv1 = nn.Conv2d(4, 1, kernel_size=3, padding="same")
         self.sigmoid = nn.Sigmoid()
 
     def forward(self, x):
