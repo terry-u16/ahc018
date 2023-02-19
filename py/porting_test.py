@@ -73,6 +73,8 @@ def batch_norm2d():
     print(in_tensor.flatten())
 
     model = nn.BatchNorm2d(C_IN)
+    for param in model.parameters():
+        nn.init.normal_(param)
 
     for _ in range(1):
         _ = model(in_tensor)
@@ -122,6 +124,6 @@ set_seed()
 #conv2d()
 #relu()
 #sigmoid()
-#batch_norm2d()
+batch_norm2d()
 #upsample2d()
-max_pool_2d()
+#max_pool_2d()

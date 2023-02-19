@@ -77,15 +77,21 @@ impl DoubleConvBlock {
         conv1_bias: Vec<f32>,
         conv2_weight: Vec<f32>,
         conv2_bias: Vec<f32>,
+        bn1_weight: Vec<f32>,
+        bn1_bias: Vec<f32>,
         bn1_mean: Vec<f32>,
         bn1_var: Vec<f32>,
+        bn2_weight: Vec<f32>,
+        bn2_bias: Vec<f32>,
         bn2_mean: Vec<f32>,
         bn2_var: Vec<f32>,
     ) -> Self {
         let conv1 = Conv2d::from_vec(in_channels, out_channels, conv1_weight, conv1_bias);
-        let batch_norm1 = BatchNorm2d::from_vec(out_channels, bn1_mean, bn1_var);
+        let batch_norm1 =
+            BatchNorm2d::from_vec(out_channels, bn1_weight, bn1_bias, bn1_mean, bn1_var);
         let conv2 = Conv2d::from_vec(out_channels, out_channels, conv2_weight, conv2_bias);
-        let batch_norm2 = BatchNorm2d::from_vec(out_channels, bn2_mean, bn2_var);
+        let batch_norm2 =
+            BatchNorm2d::from_vec(out_channels, bn2_weight, bn2_bias, bn2_mean, bn2_var);
         let relu = Relu;
 
         Self {
@@ -105,8 +111,12 @@ impl DoubleConvBlock {
             param.conv1_bias,
             param.conv2_weight,
             param.conv2_bias,
+            param.bn1_weight,
+            param.bn1_bias,
             param.bn1_mean,
             param.bn1_var,
+            param.bn2_weight,
+            param.bn2_bias,
             param.bn2_mean,
             param.bn2_var,
         )
@@ -119,8 +129,12 @@ struct DoubleConvBlockParam {
     conv1_bias: Vec<f32>,
     conv2_weight: Vec<f32>,
     conv2_bias: Vec<f32>,
+    bn1_weight: Vec<f32>,
+    bn1_bias: Vec<f32>,
     bn1_mean: Vec<f32>,
     bn1_var: Vec<f32>,
+    bn2_weight: Vec<f32>,
+    bn2_bias: Vec<f32>,
     bn2_mean: Vec<f32>,
     bn2_var: Vec<f32>,
 }
@@ -131,8 +145,12 @@ impl DoubleConvBlockParam {
         conv1_bias: &[u8],
         conv2_weight: &[u8],
         conv2_bias: &[u8],
+        bn1_weight: &[u8],
+        bn1_bias: &[u8],
         bn1_mean: &[u8],
         bn1_var: &[u8],
+        bn2_weight: &[u8],
+        bn2_bias: &[u8],
         bn2_mean: &[u8],
         bn2_var: &[u8],
     ) -> Self {
@@ -140,8 +158,12 @@ impl DoubleConvBlockParam {
         let conv1_bias = to_f32(conv1_bias);
         let conv2_weight = to_f32(conv2_weight);
         let conv2_bias = to_f32(conv2_bias);
+        let bn1_weight = to_f32(bn1_weight);
+        let bn1_bias = to_f32(bn1_bias);
         let bn1_mean = to_f32(bn1_mean);
         let bn1_var = to_f32(bn1_var);
+        let bn2_weight = to_f32(bn2_weight);
+        let bn2_bias = to_f32(bn2_bias);
         let bn2_mean = to_f32(bn2_mean);
         let bn2_var = to_f32(bn2_var);
         Self {
@@ -149,8 +171,12 @@ impl DoubleConvBlockParam {
             conv1_bias,
             conv2_weight,
             conv2_bias,
+            bn1_weight,
+            bn1_bias,
             bn1_mean,
             bn1_var,
+            bn2_weight,
+            bn2_bias,
             bn2_mean,
             bn2_var,
         }
@@ -184,15 +210,21 @@ impl UpConvBlock {
         out_channels: usize,
         conv_weight: Vec<f32>,
         conv_bias: Vec<f32>,
+        bn1_weight: Vec<f32>,
+        bn1_bias: Vec<f32>,
         bn1_mean: Vec<f32>,
         bn1_var: Vec<f32>,
+        bn2_weight: Vec<f32>,
+        bn2_bias: Vec<f32>,
         bn2_mean: Vec<f32>,
         bn2_var: Vec<f32>,
     ) -> Self {
         let upsample = BilinearX2;
-        let batch_norm1 = BatchNorm2d::from_vec(in_channels, bn1_mean, bn1_var);
+        let batch_norm1 =
+            BatchNorm2d::from_vec(in_channels, bn1_weight, bn1_bias, bn1_mean, bn1_var);
         let conv = Conv2d::from_vec(in_channels, out_channels, conv_weight, conv_bias);
-        let batch_norm2 = BatchNorm2d::from_vec(out_channels, bn2_mean, bn2_var);
+        let batch_norm2 =
+            BatchNorm2d::from_vec(out_channels, bn2_weight, bn2_bias, bn2_mean, bn2_var);
         let relu = Relu;
 
         Self {
@@ -317,25 +349,43 @@ impl NNModule for Sigmoid {
 
 #[derive(Debug, Clone)]
 struct BatchNorm2d {
+    weights: Array1<f32>,
+    bias: Array1<f32>,
     running_mean: Array1<f32>,
     running_var: Array1<f32>,
     eps: f32,
 }
 
 impl BatchNorm2d {
-    fn new(running_mean: Array1<f32>, running_var: Array1<f32>, eps: f32) -> Self {
+    fn new(
+        weights: Array1<f32>,
+        bias: Array1<f32>,
+        running_mean: Array1<f32>,
+        running_var: Array1<f32>,
+        eps: f32,
+    ) -> Self {
         Self {
+            weights,
+            bias,
             running_mean,
             running_var,
             eps,
         }
     }
 
-    fn from_vec(channel: usize, mean: Vec<f32>, var: Vec<f32>) -> Self {
+    fn from_vec(
+        channel: usize,
+        weights: Vec<f32>,
+        bias: Vec<f32>,
+        mean: Vec<f32>,
+        var: Vec<f32>,
+    ) -> Self {
         const EPS: f32 = 1e-5;
+        let w = Array1::from_shape_vec([channel], weights).unwrap();
+        let b = Array1::from_shape_vec([channel], bias).unwrap();
         let m = Array1::from_shape_vec([channel], mean).unwrap();
         let v = Array1::from_shape_vec([channel], var).unwrap();
-        Self::new(m, v, EPS)
+        Self::new(w, b, m, v, EPS)
     }
 }
 
@@ -344,14 +394,16 @@ impl NNModule for BatchNorm2d {
         let x_shape = x.shape();
         let mut y = Array3::zeros((x_shape[0], x_shape[1], x_shape[2]));
 
-        for (x, mut y, mean, var) in izip!(
+        for (x, mut y, weight, bias, mean, var) in izip!(
             x.outer_iter(),
             y.outer_iter_mut(),
+            self.weights.iter(),
+            self.bias.iter(),
             self.running_mean.iter(),
             self.running_var.iter()
         ) {
             let denominator_inv = 1.0 / (*var + self.eps).sqrt();
-            let x = x.map(|v| (*v - mean) * denominator_inv);
+            let x = x.map(|v| (*v - mean) * denominator_inv * weight + bias);
             y.assign(&x);
         }
 
@@ -607,16 +659,18 @@ mod test {
         let expected_y = Array3::from_shape_vec(
             [4, 2, 2],
             vec![
-                0.3238, 0.9291, 0.6993, 0.5592, 0.1309, 0.1308, 0.0284, 0.8737, 0.5680, 0.6797,
-                -0.0386, 0.9533, 0.8356, 0.1856, 0.1536, 0.1553,
+                -1.0138, -0.8100, -0.8874, -0.9346, -0.1695, -0.1695, -0.1827, -0.0738, 2.3414,
+                2.3676, 2.1992, 2.4317, -0.4455, -0.5952, -0.6026, -0.6022,
             ],
         )
         .unwrap();
+        let weight = array![0.3367, 0.1288, 0.2345, 0.2303];
+        let bias = array![-1.1229, -0.1863, 2.2082, -0.6380];
         let mean = array![0.0664, 0.0309, 0.0575, 0.0353];
         let var = array![0.9058, 0.9140, 0.9161, 0.9103];
         let eps = 1e-5;
 
-        let batch_norm = BatchNorm2d::new(mean, var, eps);
+        let batch_norm = BatchNorm2d::new(weight, bias, mean, var, eps);
         let y = batch_norm.apply(&x);
 
         for (expected, actual) in expected_y.iter().zip(y.iter()) {
