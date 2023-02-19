@@ -50,6 +50,21 @@ def relu():
         print(param.flatten())
 
 
+def sigmoid():
+    N_IN = 4
+    C_IN = 2
+    in_array = np.random.rand(C_IN, N_IN, N_IN)
+    in_array = in_array * 2 - 1
+    in_tensor = torch.tensor(in_array, dtype=torch.float32)
+    print("=== INPUT ===")
+    print(in_tensor.flatten())
+
+    model = nn.Sigmoid()
+    out_tensor = model(in_tensor)
+    print("=== OUTPUT ===")
+    print(out_tensor.flatten())
+
+        
 def batch_norm2d():
     N_IN = 2
     C_IN = 4
@@ -91,5 +106,6 @@ def upsample2d():
 set_seed()
 #conv2d()
 #relu()
+sigmoid()
 #batch_norm2d()
-upsample2d()
+#upsample2d()

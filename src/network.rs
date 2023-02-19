@@ -87,6 +87,16 @@ impl NNModule for Relu {
     }
 }
 
+#[derive(Debug, Clone, Copy)]
+struct Sigmoid;
+
+impl NNModule for Sigmoid {
+    fn apply(&self, x: &Array3<f32>) -> Array3<f32> {
+        let y = x.map(|x| 1.0 / (1.0 + (-x).exp()));
+        y
+    }
+}
+
 #[derive(Debug, Clone)]
 struct BatchNorm2d {
     running_mean: Array1<f32>,
@@ -171,7 +181,7 @@ impl NNModule for BilinearX2 {
 mod test {
     use ndarray::{array, Array3, Array4};
 
-    use super::{BatchNorm2d, BilinearX2, Conv2d, NNModule, Relu};
+    use super::{BatchNorm2d, BilinearX2, Conv2d, NNModule, Relu, Sigmoid};
 
     #[test]
     fn conv2d() {
@@ -246,6 +256,38 @@ mod test {
 
         let relu = Relu;
         let y = relu.apply(&x);
+
+        for (expected, actual) in expected_y.iter().zip(y.iter()) {
+            assert!((expected - actual).abs() < 1e-3);
+        }
+    }
+
+    #[test]
+    fn sigmoid() {
+        let x = Array3::from_shape_vec(
+            [2, 4, 4],
+            vec![
+                -0.2509, 0.9014, 0.4640, 0.1973, -0.6880, -0.6880, -0.8838, 0.7324, 0.2022, 0.4161,
+                -0.9588, 0.9398, 0.6649, -0.5753, -0.6364, -0.6332, -0.3915, 0.0495, -0.1361,
+                -0.4175, 0.2237, -0.7210, -0.4157, -0.2673, -0.0879, 0.5704, -0.6007, 0.0285,
+                0.1848, -0.9071, 0.2151, -0.6590,
+            ],
+        )
+        .unwrap();
+
+        let expected_y = Array3::from_shape_vec(
+            [2, 4, 4],
+            vec![
+                0.4376, 0.7112, 0.6140, 0.5492, 0.3345, 0.3345, 0.2924, 0.6753, 0.5504, 0.6026,
+                0.2771, 0.7191, 0.6604, 0.3600, 0.3461, 0.3468, 0.4034, 0.5124, 0.4660, 0.3971,
+                0.5557, 0.3272, 0.3975, 0.4336, 0.4780, 0.6388, 0.3542, 0.5071, 0.5461, 0.2876,
+                0.5536, 0.3410,
+            ],
+        )
+        .unwrap();
+
+        let sigmoid = Sigmoid;
+        let y = sigmoid.apply(&x);
 
         for (expected, actual) in expected_y.iter().zip(y.iter()) {
             assert!((expected - actual).abs() < 1e-3);
