@@ -49,6 +49,32 @@ def relu():
     for param in model.parameters():
         print(param.flatten())
 
+
+def batch_norm2d():
+    N_IN = 2
+    C_IN = 4
+    in_tensor = torch.tensor(np.random.rand(1, C_IN, N_IN, N_IN), dtype=torch.float32)
+    print("=== INPUT ===")
+    print(in_tensor.flatten())
+
+    model = nn.BatchNorm2d(C_IN)
+
+    for _ in range(1):
+        _ = model(in_tensor)
+
+    model.eval()
+    out_tensor = model(in_tensor)
+    print("=== OUTPUT ===")
+    print(out_tensor.flatten())
+
+    print("=== MODEL ===")
+    print(model.running_mean)
+    print(model.running_var)
+    print(model.eps)
+    for param in model.parameters():
+        print(param.flatten())
+
 set_seed()
 #conv2d()
-relu()
+#relu()
+batch_norm2d()

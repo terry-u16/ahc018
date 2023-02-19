@@ -1,4 +1,4 @@
-use itertools::Itertools;
+use itertools::{izip, Itertools};
 use ndarray::{s, Array, Array1, Array2, Array3, Array4, Axis};
 
 pub trait NNModule {
@@ -77,6 +77,7 @@ impl NNModule for Conv2d {
     }
 }
 
+#[derive(Debug, Clone, Copy)]
 struct Relu;
 
 impl NNModule for Relu {
@@ -86,11 +87,48 @@ impl NNModule for Relu {
     }
 }
 
+#[derive(Debug, Clone)]
+struct BatchNorm2d {
+    running_mean: Array1<f32>,
+    running_var: Array1<f32>,
+    eps: f32,
+}
+
+impl BatchNorm2d {
+    fn new(running_mean: Array1<f32>, running_var: Array1<f32>, eps: f32) -> Self {
+        Self {
+            running_mean,
+            running_var,
+            eps,
+        }
+    }
+}
+
+impl NNModule for BatchNorm2d {
+    fn apply(&self, x: &Array3<f32>) -> Array3<f32> {
+        let x_shape = x.shape();
+        let mut y = Array3::zeros((x_shape[0], x_shape[1], x_shape[2]));
+
+        for (x, mut y, mean, var) in izip!(
+            x.outer_iter(),
+            y.outer_iter_mut(),
+            self.running_mean.iter(),
+            self.running_var.iter()
+        ) {
+            let denominator_inv = 1.0 / (*var + self.eps).sqrt();
+            let x = x.map(|v| (*v - mean) * denominator_inv);
+            y.assign(&x);
+        }
+
+        y
+    }
+}
+
 #[cfg(test)]
 mod test {
     use ndarray::{array, Array3, Array4};
 
-    use super::{Conv2d, NNModule, Relu};
+    use super::{BatchNorm2d, Conv2d, NNModule, Relu};
 
     #[test]
     fn conv2d() {
@@ -165,6 +203,37 @@ mod test {
 
         let relu = Relu;
         let y = relu.apply(&x);
+
+        for (expected, actual) in expected_y.iter().zip(y.iter()) {
+            assert!((expected - actual).abs() < 1e-3);
+        }
+    }
+
+    #[test]
+    fn batch_norm2d() {
+        let x = Array3::from_shape_vec(
+            [4, 2, 2],
+            vec![
+                0.3745, 0.9507, 0.7320, 0.5987, 0.1560, 0.1560, 0.0581, 0.8662, 0.6011, 0.7081,
+                0.0206, 0.9699, 0.8324, 0.2123, 0.1818, 0.1834,
+            ],
+        )
+        .unwrap();
+
+        let expected_y = Array3::from_shape_vec(
+            [4, 2, 2],
+            vec![
+                0.3238, 0.9291, 0.6993, 0.5592, 0.1309, 0.1308, 0.0284, 0.8737, 0.5680, 0.6797,
+                -0.0386, 0.9533, 0.8356, 0.1856, 0.1536, 0.1553,
+            ],
+        )
+        .unwrap();
+        let mean = array![0.0664, 0.0309, 0.0575, 0.0353];
+        let var = array![0.9058, 0.9140, 0.9161, 0.9103];
+        let eps = 1e-5;
+
+        let batch_norm = BatchNorm2d::new(mean, var, eps);
+        let y = batch_norm.apply(&x);
 
         for (expected, actual) in expected_y.iter().zip(y.iter()) {
             assert!((expected - actual).abs() < 1e-3);
