@@ -1,0 +1,50 @@
+{
+  "ProblemOption": {
+    "ProblemName": "ahc018",
+    "TimeLimit": "00:00:05"
+  },
+  "RunnerOption": {
+    "StartSeed": 0,
+    "EndSeed": 100,
+    "ReferenceScore": 1000000,
+    "LocalParallelCount": 16,
+    "CloudParallelCount": 300,
+    "SummaryFilePath": ".\\data\\score_history.txt",
+    "ResultDirectoryPath": ".\\data\\results"
+  },
+  "ExecutionOption": {
+    "ScoreRegex": "Total Cost = (?<score>\\d+)",
+    "SeedFormat": "0000",
+    "Timeout": "00:00:30",
+    "LocalExecutionSteps": [
+      {
+        "ExecutionCommand": "tester.exe ahc018.exe",
+        "StdInPath": "data/in/{SEED}.txt",
+        "StdOutPath": "data/out/{SEED}.txt",
+        "StdErrorPath": null
+      }
+    ],
+    "CloudExecutionSteps": [
+      {
+        "ExecutionCommand": "./tester ./main",
+        "StdInPath": "in/{SEED}.txt",
+        "StdOutPath": "out.txt",
+        "StdErrorPath": null
+      }
+    ],
+    "Files": [
+      "main",
+      "tester",
+      "in/{SEED}.txt"
+    ]
+  },
+  "CompileOption": {
+    "ExeName": "main",
+    "Files": [
+      {
+        "Source": "expanded.rs",
+        "Destination": "src/bin/main.rs"
+      }
+    ]
+  }
+}
