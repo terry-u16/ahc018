@@ -124,11 +124,54 @@ impl NNModule for BatchNorm2d {
     }
 }
 
+/// bilinear補間を用いて画像サイズを2倍に変更する
+#[derive(Debug, Clone)]
+struct BilinearX2;
+
+impl NNModule for BilinearX2 {
+    fn apply(&self, x: &Array3<f32>) -> Array3<f32> {
+        const EPS: f64 = 1e-10;
+        let x_shape = x.shape();
+        let mut y = Array3::zeros((x_shape[0], x_shape[1] * 2, x_shape[2] * 2));
+
+        for (x, mut y) in izip!(x.outer_iter(), y.outer_iter_mut()) {
+            let y_shape = y.shape();
+            let y_shape_1 = y_shape[0];
+            let y_shape_2 = y_shape[0];
+
+            for row in 0..y_shape_1 {
+                let pos_y = row as f64 * (x_shape[1] - 1) as f64 / (y_shape_1 - 1) as f64;
+                let floor_y = (pos_y + EPS).floor() as usize;
+                let ceil_y = (pos_y - EPS).ceil() as usize;
+                let dy = pos_y - floor_y as f64;
+
+                for col in 0..y_shape_2 {
+                    let pos_x = col as f64 * (x_shape[2] - 1) as f64 / (y_shape_2 - 1) as f64;
+                    let floor_x = (pos_x + EPS).floor() as usize;
+                    let ceil_x = (pos_x - EPS).ceil() as usize;
+                    let dx = pos_x - floor_x as f64;
+
+                    let x00 = x[[floor_y, floor_x]] as f64;
+                    let x01 = x[[floor_y, ceil_x]] as f64;
+                    let x10 = x[[ceil_y, floor_x]] as f64;
+                    let x11 = x[[ceil_y, ceil_x]] as f64;
+
+                    let x0 = x00 * (1.0 - dx) + x01 * dx;
+                    let x1 = x10 * (1.0 - dx) + x11 * dx;
+                    y[[row, col]] = (x0 * (1.0 - dy) + x1 * dy) as f32;
+                }
+            }
+        }
+
+        y
+    }
+}
+
 #[cfg(test)]
 mod test {
     use ndarray::{array, Array3, Array4};
 
-    use super::{BatchNorm2d, Conv2d, NNModule, Relu};
+    use super::{BatchNorm2d, BilinearX2, Conv2d, NNModule, Relu};
 
     #[test]
     fn conv2d() {
@@ -234,6 +277,35 @@ mod test {
 
         let batch_norm = BatchNorm2d::new(mean, var, eps);
         let y = batch_norm.apply(&x);
+
+        for (expected, actual) in expected_y.iter().zip(y.iter()) {
+            assert!((expected - actual).abs() < 1e-3);
+        }
+    }
+
+    #[test]
+    fn bilinear_x2() {
+        let x = Array3::from_shape_vec(
+            [1, 3, 3],
+            vec![
+                0.3745, 0.9507, 0.7320, 0.5987, 0.1560, 0.1560, 0.0581, 0.8662, 0.6011,
+            ],
+        )
+        .unwrap();
+
+        let expected_y = Array3::from_shape_vec(
+            [1, 6, 6],
+            vec![
+                0.3745, 0.6050, 0.8355, 0.9070, 0.8195, 0.7320, 0.4642, 0.5316, 0.5991, 0.6066,
+                0.5541, 0.5016, 0.5538, 0.4583, 0.3627, 0.3062, 0.2887, 0.2712, 0.4905, 0.4135,
+                0.3365, 0.2874, 0.2662, 0.2450, 0.2743, 0.3974, 0.5206, 0.5503, 0.4867, 0.4231,
+                0.0581, 0.3813, 0.7046, 0.8132, 0.7071, 0.6011,
+            ],
+        )
+        .unwrap();
+
+        let bilinear = BilinearX2;
+        let y = bilinear.apply(&x);
 
         for (expected, actual) in expected_y.iter().zip(y.iter()) {
             assert!((expected - actual).abs() < 1e-3);

@@ -74,7 +74,22 @@ def batch_norm2d():
     for param in model.parameters():
         print(param.flatten())
 
+
+def upsample2d():
+    N_IN = 3
+    C_IN = 1
+    in_tensor = torch.tensor(np.random.rand(1, C_IN, N_IN, N_IN), dtype=torch.float32)
+    print("=== INPUT ===")
+    print(in_tensor.flatten())
+
+    model = nn.Upsample(scale_factor=2, mode="bilinear", align_corners=True)
+
+    out_tensor = model(in_tensor)
+    print("=== OUTPUT ===")
+    print(out_tensor.flatten())
+
 set_seed()
 #conv2d()
 #relu()
-batch_norm2d()
+#batch_norm2d()
+upsample2d()
