@@ -18,11 +18,8 @@ def export_weights(weights: OrderedDict, path: str):
             for v in value:
                 stream += pack(v)
 
-            s = base64.b64encode(stream)
-            f.write(key)
-            f.write("\n")
-            f.write(s.decode("utf-8"))
-            f.write("\n")
+            s = base64.b64encode(stream).decode("utf-8")
+            f.write(f"\"{key}\" => b\"{s}\",\n")
 
 dict = torch.load("data/model_weight.pth")
 export_weights(dict, "data/weight_base64.txt")

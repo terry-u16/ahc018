@@ -1,10 +1,13 @@
 mod common;
 mod init_solution;
 mod input;
-mod output;
 mod network;
+mod output;
 
-use std::{io::{self, BufReader}, time::Instant};
+use std::{
+    io::{self, BufReader},
+    time::Instant,
+};
 
 use init_solution::InitSolver;
 use output::{output, DiggingResult};

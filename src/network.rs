@@ -1,5 +1,8 @@
+mod weight;
 use itertools::{izip, Itertools};
 use ndarray::{s, stack, Array, Array1, Array2, Array3, Array4, Axis};
+
+use self::weight::UNetWeightDict;
 
 pub trait NNModule {
     fn apply(&self, x: &Array3<f32>) -> Array3<f32>;
@@ -20,6 +23,27 @@ pub struct UNet {
     last_conv: Conv2d,
     maxpool: MaxPoolX2,
     sigmoid: Sigmoid,
+}
+
+impl UNet {
+    pub fn new() -> Self {
+        let dict = UNetWeightDict::new();
+        Self {
+            double_conv1: DoubleConvBlock::new_dict(2, 4, 1, &dict),
+            double_conv2: DoubleConvBlock::new_dict(4, 8, 2, &dict),
+            double_conv3: DoubleConvBlock::new_dict(8, 16, 3, &dict),
+            double_conv4: DoubleConvBlock::new_dict(16, 32, 4, &dict),
+            double_conv5: DoubleConvBlock::new_dict(32, 16, 5, &dict),
+            double_conv6: DoubleConvBlock::new_dict(16, 8, 6, &dict),
+            double_conv7: DoubleConvBlock::new_dict(8, 4, 7, &dict),
+            up_conv1: UpConvBlock::new_dict(32, 16, 1, &dict),
+            up_conv2: UpConvBlock::new_dict(16, 8, 2, &dict),
+            up_conv3: UpConvBlock::new_dict(8, 4, 3, &dict),
+            last_conv: Conv2d::from_vec(4, 1, dict.get("conv1.weight"), dict.get("conv1.bias")),
+            maxpool: MaxPoolX2,
+            sigmoid: Sigmoid,
+        }
+    }
 }
 
 impl NNModule for UNet {
@@ -103,83 +127,23 @@ impl DoubleConvBlock {
         }
     }
 
-    fn new_param(in_channels: usize, out_channels: usize, param: DoubleConvBlockParam) -> Self {
+    fn new_dict(in_channels: usize, out_channels: usize, id: usize, dict: &UNetWeightDict) -> Self {
         Self::new(
             in_channels,
             out_channels,
-            param.conv1_weight,
-            param.conv1_bias,
-            param.conv2_weight,
-            param.conv2_bias,
-            param.bn1_weight,
-            param.bn1_bias,
-            param.bn1_mean,
-            param.bn1_var,
-            param.bn2_weight,
-            param.bn2_bias,
-            param.bn2_mean,
-            param.bn2_var,
+            dict.get(&format!("TCB{}.conv1.weight", id)),
+            dict.get(&format!("TCB{}.conv1.bias", id)),
+            dict.get(&format!("TCB{}.conv2.weight", id)),
+            dict.get(&format!("TCB{}.conv2.bias", id)),
+            dict.get(&format!("TCB{}.bn1.weight", id)),
+            dict.get(&format!("TCB{}.bn1.bias", id)),
+            dict.get(&format!("TCB{}.bn1.running_mean", id)),
+            dict.get(&format!("TCB{}.bn1.running_var", id)),
+            dict.get(&format!("TCB{}.bn2.weight", id)),
+            dict.get(&format!("TCB{}.bn2.bias", id)),
+            dict.get(&format!("TCB{}.bn2.running_mean", id)),
+            dict.get(&format!("TCB{}.bn2.running_var", id)),
         )
-    }
-}
-
-#[derive(Debug, Clone)]
-struct DoubleConvBlockParam {
-    conv1_weight: Vec<f32>,
-    conv1_bias: Vec<f32>,
-    conv2_weight: Vec<f32>,
-    conv2_bias: Vec<f32>,
-    bn1_weight: Vec<f32>,
-    bn1_bias: Vec<f32>,
-    bn1_mean: Vec<f32>,
-    bn1_var: Vec<f32>,
-    bn2_weight: Vec<f32>,
-    bn2_bias: Vec<f32>,
-    bn2_mean: Vec<f32>,
-    bn2_var: Vec<f32>,
-}
-
-impl DoubleConvBlockParam {
-    fn new(
-        conv1_weight: &[u8],
-        conv1_bias: &[u8],
-        conv2_weight: &[u8],
-        conv2_bias: &[u8],
-        bn1_weight: &[u8],
-        bn1_bias: &[u8],
-        bn1_mean: &[u8],
-        bn1_var: &[u8],
-        bn2_weight: &[u8],
-        bn2_bias: &[u8],
-        bn2_mean: &[u8],
-        bn2_var: &[u8],
-    ) -> Self {
-        let conv1_weight = to_f32(conv1_weight);
-        let conv1_bias = to_f32(conv1_bias);
-        let conv2_weight = to_f32(conv2_weight);
-        let conv2_bias = to_f32(conv2_bias);
-        let bn1_weight = to_f32(bn1_weight);
-        let bn1_bias = to_f32(bn1_bias);
-        let bn1_mean = to_f32(bn1_mean);
-        let bn1_var = to_f32(bn1_var);
-        let bn2_weight = to_f32(bn2_weight);
-        let bn2_bias = to_f32(bn2_bias);
-        let bn2_mean = to_f32(bn2_mean);
-        let bn2_var = to_f32(bn2_var);
-        Self {
-            conv1_weight,
-            conv1_bias,
-            conv2_weight,
-            conv2_bias,
-            bn1_weight,
-            bn1_bias,
-            bn1_mean,
-            bn1_var,
-            bn2_weight,
-            bn2_bias,
-            bn2_mean,
-            bn2_var,
-        }
     }
 }
 
@@ -234,6 +198,23 @@ impl UpConvBlock {
             batch_norm2,
             relu,
         }
+    }
+
+    fn new_dict(in_channels: usize, out_channels: usize, id: usize, dict: &UNetWeightDict) -> Self {
+        Self::new(
+            in_channels,
+            out_channels,
+            dict.get(&format!("UC{}.conv.weight", id)),
+            dict.get(&format!("UC{}.conv.bias", id)),
+            dict.get(&format!("UC{}.bn1.weight", id)),
+            dict.get(&format!("UC{}.bn1.bias", id)),
+            dict.get(&format!("UC{}.bn1.running_mean", id)),
+            dict.get(&format!("UC{}.bn1.running_var", id)),
+            dict.get(&format!("UC{}.bn2.weight", id)),
+            dict.get(&format!("UC{}.bn2.bias", id)),
+            dict.get(&format!("UC{}.bn2.running_mean", id)),
+            dict.get(&format!("UC{}.bn2.running_var", id)),
+        )
     }
 }
 
@@ -487,47 +468,6 @@ impl NNModule for MaxPoolX2 {
     }
 }
 
-fn to_f32(data: &[u8]) -> Vec<f32> {
-    const BASE64_MAP: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-    let mut stream = vec![];
-
-    let mut cursor = 0;
-
-    while cursor + 4 <= data.len() {
-        let mut buffer = 0u32;
-
-        for i in 0..4 {
-            let c = data[cursor + i];
-            let shift = 6 * (3 - i);
-
-            for (i, &d) in BASE64_MAP.iter().enumerate() {
-                if c == d {
-                    buffer |= (i as u32) << shift;
-                }
-            }
-        }
-
-        for i in 0..3 {
-            let shift = 8 * (2 - i);
-            let value = (buffer >> shift) as u8;
-            stream.push(value);
-        }
-
-        cursor += 4;
-    }
-
-    let mut result = vec![];
-    cursor = 0;
-
-    while cursor + 4 <= stream.len() {
-        let p = stream.as_ptr() as *const f32;
-        let x = unsafe { *p.offset(cursor as isize / 4) };
-        result.push(x);
-        cursor += 4;
-    }
-
-    result
-}
 #[cfg(test)]
 mod test {
     use ndarray::{array, Array3, Array4};
