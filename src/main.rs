@@ -2,6 +2,7 @@ mod common;
 mod init_solution;
 mod input;
 mod output;
+mod network;
 
 use std::{io::{self, BufReader}, time::Instant};
 
