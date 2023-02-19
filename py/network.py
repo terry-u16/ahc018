@@ -27,12 +27,14 @@ class UpConv(nn.Module):
         self.bn1 = nn.BatchNorm2d(in_channels)
         self.conv = nn.Conv2d(in_channels, out_channels, kernel_size=3, padding="same")
         self.bn2 = nn.BatchNorm2d(out_channels)
+        self.rl = nn.ReLU()
 
     def forward(self, x):
         x = self.up(x)
         x = self.bn1(x)
         x = self.conv(x)
         x = self.bn2(x)
+        x = self.rl(x)
         return x
 
 class UNet_2D(nn.Module):

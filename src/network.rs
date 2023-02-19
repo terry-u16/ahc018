@@ -6,6 +6,103 @@ pub trait NNModule {
 }
 
 #[derive(Debug, Clone)]
+struct DoubleConvBlock {
+    conv1: Conv2d,
+    conv2: Conv2d,
+    batch_norm1: BatchNorm2d,
+    batch_norm2: BatchNorm2d,
+    relu: Relu,
+}
+
+impl DoubleConvBlock {
+    fn new(
+        in_channels: usize,
+        out_channels: usize,
+        conv1_weight: Vec<f32>,
+        conv1_bias: Vec<f32>,
+        conv2_weight: Vec<f32>,
+        conv2_bias: Vec<f32>,
+        bn1_mean: Vec<f32>,
+        bn1_var: Vec<f32>,
+        bn2_mean: Vec<f32>,
+        bn2_var: Vec<f32>,
+    ) -> Self {
+        let conv1 = Conv2d::from_vec(in_channels, out_channels, conv1_weight, conv1_bias);
+        let batch_norm1 = BatchNorm2d::from_vec(out_channels, bn1_mean, bn1_var);
+        let conv2 = Conv2d::from_vec(out_channels, out_channels, conv2_weight, conv2_bias);
+        let batch_norm2 = BatchNorm2d::from_vec(out_channels, bn2_mean, bn2_var);
+        let relu = Relu;
+
+        Self {
+            conv1,
+            conv2,
+            batch_norm1,
+            batch_norm2,
+            relu,
+        }
+    }
+}
+
+impl NNModule for DoubleConvBlock {
+    fn apply(&self, x: &Array3<f32>) -> Array3<f32> {
+        let x = self.conv1.apply(x);
+        let x = self.batch_norm1.apply(&x);
+        let x = self.relu.apply(&x);
+        let x = self.conv2.apply(&x);
+        let x = self.batch_norm2.apply(&x);
+        let x = self.relu.apply(&x);
+        x
+    }
+}
+
+#[derive(Debug, Clone)]
+struct UpConvBlock {
+    upsample: BilinearX2,
+    conv: Conv2d,
+    batch_norm1: BatchNorm2d,
+    batch_norm2: BatchNorm2d,
+    relu: Relu,
+}
+
+impl UpConvBlock {
+    fn new(
+        in_channels: usize,
+        out_channels: usize,
+        conv_weight: Vec<f32>,
+        conv_bias: Vec<f32>,
+        bn1_mean: Vec<f32>,
+        bn1_var: Vec<f32>,
+        bn2_mean: Vec<f32>,
+        bn2_var: Vec<f32>,
+    ) -> Self {
+        let upsample = BilinearX2;
+        let batch_norm1 = BatchNorm2d::from_vec(in_channels, bn1_mean, bn1_var);
+        let conv = Conv2d::from_vec(in_channels, out_channels, conv_weight, conv_bias);
+        let batch_norm2 = BatchNorm2d::from_vec(out_channels, bn2_mean, bn2_var);
+        let relu = Relu;
+
+        Self {
+            upsample,
+            conv,
+            batch_norm1,
+            batch_norm2,
+            relu,
+        }
+    }
+}
+
+impl NNModule for UpConvBlock {
+    fn apply(&self, x: &Array3<f32>) -> Array3<f32> {
+        let x = self.upsample.apply(x);
+        let x = self.batch_norm1.apply(&x);
+        let x = self.conv.apply(&x);
+        let x = self.batch_norm2.apply(&x);
+        let x = self.relu.apply(&x);
+        x
+    }
+}
+
+#[derive(Debug, Clone)]
 struct Conv2d {
     in_channels: usize,
     out_channels: usize,
@@ -27,6 +124,13 @@ impl Conv2d {
             weights,
             bias,
         }
+    }
+
+    fn from_vec(c_in: usize, c_out: usize, weight: Vec<f32>, bias: Vec<f32>) -> Self {
+        const KERNEL_SIZE: usize = 3;
+        let w = Array4::from_shape_vec([c_out, c_in, KERNEL_SIZE, KERNEL_SIZE], weight).unwrap();
+        let b = Array1::from_shape_vec([c_out], bias).unwrap();
+        Self::new(c_in, c_out, w, b)
     }
 }
 
@@ -111,6 +215,13 @@ impl BatchNorm2d {
             running_var,
             eps,
         }
+    }
+
+    fn from_vec(channel: usize, mean: Vec<f32>, var: Vec<f32>) -> Self {
+        const EPS: f32 = 1e-5;
+        let m = Array1::from_shape_vec([channel], mean).unwrap();
+        let v = Array1::from_shape_vec([channel], var).unwrap();
+        Self::new(m, v, EPS)
     }
 }
 
