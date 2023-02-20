@@ -1,5 +1,7 @@
 #[allow(dead_code)]
 pub mod grid {
+    use std::ops::{Div, DivAssign, Mul, MulAssign};
+
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
     pub struct Coordinate {
         pub row: usize,
@@ -25,6 +27,36 @@ pub mod grid {
 
         const fn dist_1d(x0: usize, x1: usize) -> usize {
             (x0 as i64 - x1 as i64).abs() as usize
+        }
+    }
+
+    impl Mul<usize> for Coordinate {
+        type Output = Coordinate;
+
+        fn mul(self, rhs: usize) -> Self::Output {
+            Self::new(self.row * rhs, self.col * rhs)
+        }
+    }
+
+    impl MulAssign<usize> for Coordinate {
+        fn mul_assign(&mut self, rhs: usize) {
+            self.row *= rhs;
+            self.col *= rhs;
+        }
+    }
+
+    impl Div<usize> for Coordinate {
+        type Output = Coordinate;
+
+        fn div(self, rhs: usize) -> Self::Output {
+            Self::new(self.row / rhs, self.col / rhs)
+        }
+    }
+
+    impl DivAssign<usize> for Coordinate {
+        fn div_assign(&mut self, rhs: usize) {
+            self.row /= rhs;
+            self.col /= rhs;
         }
     }
 

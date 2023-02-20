@@ -3,6 +3,8 @@ mod init_solution;
 mod input;
 mod network;
 mod output;
+mod map;
+mod acl;
 
 use std::{
     io::{self, BufReader},
