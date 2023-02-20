@@ -35,6 +35,8 @@ def write_cost_img(path: str, img: np.ndarray):
     pil_img = Image.fromarray((img * 255).astype(np.uint8))
     pil_img.save(path)
 
+def write_cost_numpy(path: str, img: np.ndarray):
+    np.save(path, img)
 
 def gen_sampled_img(img: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
     seen = set()
@@ -62,6 +64,9 @@ def gen_sampled_img(img: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
 for seed in tqdm(range(10000)):
     img = read_image(f"data/learning_in/{seed:0>4}.txt")
     write_cost_img(f"data/image_y/{seed:0>4}.bmp", img)
+    write_cost_numpy(f"data/numpy_y/{seed:0>4}.npy", img)
     sampled_img, flag_img = gen_sampled_img(img)
     write_cost_img(f"data/image_x0/{seed:0>4}.bmp", sampled_img)
+    write_cost_numpy(f"data/numpy_x0/{seed:0>4}.npy", sampled_img)
     write_cost_img(f"data/image_x1/{seed:0>4}.bmp", flag_img)
+    write_cost_numpy(f"data/numpy_x1/{seed:0>4}.npy", flag_img)

@@ -32,9 +32,9 @@ def setup_train_val_split(count: int) -> Tuple[np.ndarray, np.ndarray]:
 def setup_train_val_datasets(data_dir: str) -> Tuple[dataset.ImageDataset, dataset.ImageDataset]:
     train_indices, val_indices = setup_train_val_split(10000)
 
-    image_x0_path = f"{data_dir}/image_x0"
-    image_x1_path = f"{data_dir}/image_x1"
-    image_y_path = f"{data_dir}/image_y"
+    image_x0_path = f"{data_dir}/numpy_x0"
+    image_x1_path = f"{data_dir}/numpy_x1"
+    image_y_path = f"{data_dir}/numpy_y"
     train_dataset = dataset.ImageDataset(train_indices, image_x0_path, image_x1_path, image_y_path)
     val_dataset = dataset.ImageDataset(val_indices, image_x0_path, image_x1_path, image_y_path)
     

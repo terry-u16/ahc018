@@ -20,19 +20,19 @@ class ImageDataset(Dataset):
 
   def __getitem__(self, i):
     index = self.indices[i]
-    img_x0_path = f"{self.path_x0}/{index:0>4}.bmp"
-    img_x0 = np.array(Image.open(img_x0_path)) / 255
+    img_x0_path = f"{self.path_x0}/{index:0>4}.npy"
+    img_x0 = np.load(img_x0_path)
     img_x0 = img_x0[np.newaxis, :, :]
     img_x0 = torch.from_numpy(img_x0.astype(np.float32)).clone()
 
-    img_x1_path = f"{self.path_x1}/{index:0>4}.bmp"
-    img_x1 = np.array(Image.open(img_x1_path)) / 255
+    img_x1_path = f"{self.path_x1}/{index:0>4}.npy"
+    img_x1 = np.load(img_x1_path)
     img_x1 = img_x1[np.newaxis, :, :]
     img_x1 = torch.from_numpy(img_x1.astype(np.float32)).clone()
     img_x = torch.cat([img_x0, img_x1])
 
-    img_y_path = f"{self.path_y}/{index:0>4}.bmp"
-    img_y = np.array(Image.open(img_y_path)) / 255
+    img_y_path = f"{self.path_y}/{index:0>4}.npy"
+    img_y = np.load(img_y_path)
     img_y = img_y[np.newaxis, :, :]
     img_y = torch.from_numpy(img_y.astype(np.float32)).clone()
 
