@@ -11,8 +11,8 @@ SIZE = RAW_SIZE // STRIDE
 SCALING = 5000
 DATA_COUNT = 10000
 
-# [8, 256]からサンプルする点の数をランダムに選ぶ
-MIN_SAMPLING_POW = 3
+# [32, 256]からサンプルする点の数をランダムに選ぶ
+MIN_SAMPLING_POW = 5
 MAX_SAMPLING_POW = 8
 
 def read_image(path: str) -> np.ndarray:
