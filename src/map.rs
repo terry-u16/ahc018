@@ -127,7 +127,7 @@ impl MapState {
             for col in 0..MINI_SIZE {
                 let c = Coordinate::new(row, col);
                 let value = (predicted[[0, c.row, c.col]] * MAX_STRENGTH as f32).round() as i32;
-                let value = value.clamp(MIN_STRENGTH, MAX_STRENGTH);
+                let value = value.max(MIN_STRENGTH).min(MAX_STRENGTH);
                 self.predicted_sturdiness[c] = value;
             }
         }
