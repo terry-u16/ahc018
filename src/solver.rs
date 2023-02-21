@@ -109,13 +109,15 @@ impl Policy for IncreasingPolicy {
 struct PredictedPolicy {
     target: Coordinate,
     safety_factor: f64,
+    max: i32,
 }
 
 impl PredictedPolicy {
-    fn new(target: Coordinate, safety_factor: f64) -> Self {
+    fn new(target: Coordinate, safety_factor: f64, input: &Input) -> Self {
         Self {
             target,
             safety_factor,
+            max: input.exhausting_energy * 10,
         }
     }
 }
@@ -127,5 +129,6 @@ impl Policy for PredictedPolicy {
 
     fn next_power(&mut self, map: &MapState) -> i32 {
         map.get_pred_sturdiness(self.target, self.safety_factor)
+            .min(self.max)
     }
 }

@@ -26,7 +26,7 @@ impl Strategy for FullPathStrategy {
         for &c in paths.iter().flatten() {
             if !digged.is_digged(c) {
                 digged.dig(c);
-                policies.push(Box::new(PredictedPolicy::new(c, 1.2)));
+                policies.push(Box::new(PredictedPolicy::new(c, 1.2, input)));
             }
         }
 
