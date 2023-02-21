@@ -37,14 +37,18 @@ impl RandomBoringStrategy {
     }
 
     fn get_random_poicies(&self, input: &Input, map: &MapState) -> Vec<Box<dyn Policy>> {
-        const KEEP_OUT_DIST: usize = 40;
-        const TARGET_COUNT: usize = 20;
+        const KEEP_OUT_DIST: usize = 60;
+        const TARGET_COUNT: usize = 15;
         let remain = TARGET_COUNT - (input.water_count + input.house_count);
         let mut rng = Pcg64Mcg::new(42);
         let mut policies: Vec<Box<dyn Policy>> = vec![];
         let mut digged = map.digged.clone();
 
-        while policies.len() < remain {
+        let mut trial = 0;
+        const MAX_TRIAL: usize = 1000;
+
+        while policies.len() < remain && trial < MAX_TRIAL {
+            trial += 1;
             let row = rng.gen_range(0, input.map_size);
             let col = rng.gen_range(0, input.map_size);
             let c = Coordinate::new(row, col);
