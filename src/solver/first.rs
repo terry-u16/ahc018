@@ -1,7 +1,7 @@
 use rand::Rng;
 use rand_pcg::Pcg64Mcg;
 
-use crate::{common::grid::Coordinate, input::Input, map::MapState};
+use crate::{common::grid::Coordinate, input::Input, map::MapState, ChangeMinMax};
 
 use super::{IncreasingPolicy, Policy, Strategy};
 
@@ -44,9 +44,26 @@ impl RandomBoringStrategy {
         let mut policies: Vec<Box<dyn Policy>> = vec![];
         let mut digged = map.digged.clone();
 
-        while policies.len() < remain {
-            let row = rng.gen_range(0, input.map_size);
-            let col = rng.gen_range(0, input.map_size);
+        // 包含する長方形の中だけ探す
+        let mut min_row = std::usize::MAX;
+        let mut max_row = std::usize::MIN;
+        let mut min_col = std::usize::MAX;
+        let mut max_col = std::usize::MIN;
+
+        for &p in input.waters.iter().chain(input.houses.iter()) {
+            min_row.change_min(p.row);
+            max_row.change_max(p.row);
+            min_col.change_min(p.col);
+            max_col.change_max(p.col);
+        }
+
+        let mut trial = 0;
+        const MAX_TRIAL: usize = 10000;
+
+        while policies.len() < remain && trial < MAX_TRIAL {
+            trial += 1;
+            let row = rng.gen_range(min_row, max_row + 1);
+            let col = rng.gen_range(min_col, max_col + 1);
             let c = Coordinate::new(row, col);
             if !digged.has_digged_nearby(c, KEEP_OUT_DIST) {
                 policies.push(Box::new(IncreasingPolicy::new(c)));
