@@ -20,7 +20,7 @@ use proconio::*;
 #[allow(unused_imports)]
 use rand::prelude::*;
 
-use crate::input::Input;
+use crate::{input::Input, solver::Solver};
 
 pub trait ChangeMinMax {
     fn change_min(&mut self, v: Self) -> bool;
@@ -52,10 +52,10 @@ macro_rules! mat {
 fn main() {
     let mut stdin = LineSource::new(BufReader::new(io::stdin()));
     let input = Input::read(&mut stdin);
-    let mut solver = InitSolver::new(&input);
+    let mut solver = Solver::new(&input);
 
     loop {
-        let action = solver.get_next_action(&input);
+        let action = solver.get_next_action();
         let result = output(action, "", &mut stdin);
 
         if let DiggingResult::Completed = result {

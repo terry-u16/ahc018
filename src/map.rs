@@ -170,6 +170,26 @@ impl DiggedMap {
         self.dsu.same(c_index, self.water_master())
     }
 
+    pub fn has_digged_nearby(&self, c: Coordinate, dist: usize) -> bool {
+        let row0 = c.row.saturating_sub(dist);
+        let row1 = (c.row + dist).min(self.map_size - 1);
+
+        for row in row0..=row1 {
+            // マンハッタン距離がdist以下の範囲を探したい
+            let d = dist - (c.row as isize - row as isize).abs() as usize;
+            let col0 = c.col.saturating_sub(d);
+            let col1 = (c.col + d).min(self.map_size - 1);
+
+            for col in col0..=col1 {
+                if self.is_digged(Coordinate::new(row, col)) {
+                    return true;
+                }
+            }
+        }
+
+        false
+    }
+
     fn water_master(&self) -> usize {
         self.map_size * self.map_size
     }

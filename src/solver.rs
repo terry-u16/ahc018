@@ -1,3 +1,5 @@
+mod first;
+
 use std::collections::VecDeque;
 
 use crate::{
@@ -6,6 +8,8 @@ use crate::{
     map::MapState,
     output::{Action, DiggingResult},
 };
+
+use self::first::RandomBoringStrategy;
 
 pub struct Solver<'a> {
     input: &'a Input,
@@ -18,7 +22,7 @@ pub struct Solver<'a> {
 impl<'a> Solver<'a> {
     pub fn new(input: &'a Input) -> Self {
         let map = MapState::new(input);
-        let strategies = vec![];
+        let strategies: Vec<Box<dyn Strategy>> = vec![Box::new(RandomBoringStrategy::new())];
 
         Self {
             input,
