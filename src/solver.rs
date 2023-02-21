@@ -1,4 +1,5 @@
 mod first;
+mod steiner_tree;
 
 use std::collections::VecDeque;
 
@@ -7,6 +8,7 @@ use crate::{
     input::Input,
     map::MapState,
     output::{Action, DiggingResult},
+    solver::steiner_tree::test,
 };
 
 use self::first::RandomBoringStrategy;
@@ -42,6 +44,8 @@ impl<'a> Solver<'a> {
                 self.map.update_prediction();
                 self.map.dump_pred(self.input, 1000);
                 eprintln!();
+
+                test(&self.input, &self.map);
 
                 self.stage += 1;
                 continue;

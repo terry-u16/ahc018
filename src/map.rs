@@ -51,7 +51,7 @@ impl MapState {
     }
 
     pub fn get_pred_sturdiness(&self, c: Coordinate, safety_factor: f64) -> i32 {
-        let pred = self.predicted_sturdiness[c];
+        let pred = self.predicted_sturdiness[c / SHRINK_RATIO];
         let s = (pred as f64 * safety_factor).round() as i32;
         s
     }
