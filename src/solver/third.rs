@@ -1,10 +1,14 @@
 use super::{steiner_tree::calc_steiner_tree_paths, IncreasingPolicy, Strategy};
 
-pub struct FullPathStrategy;
+pub struct FullPathStrategy {
+    is_completed: bool,
+}
 
 impl FullPathStrategy {
     pub fn new() -> Self {
-        Self
+        Self {
+            is_completed: false,
+        }
     }
 }
 
@@ -26,6 +30,12 @@ impl Strategy for FullPathStrategy {
             }
         }
 
+        self.is_completed = true;
+
         policies
+    }
+
+    fn is_completed(&self) -> bool {
+        self.is_completed
     }
 }

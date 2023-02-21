@@ -42,30 +42,12 @@ impl<'a> Solver<'a> {
     }
 
     pub fn get_next_action(&mut self) -> Action {
-        while self.policies.len() == 0 {
-            let policies = self.strategies[self.stage].get_next_policies(self.input, &mut self.map);
-
-            if policies.len() == 0 {
-                // 途中経過を出力
-                self.map.update_prediction();
-                self.map.dump_pred(self.input, 1000);
-                eprintln!();
-                /*
-                    let mut digged = self.map.digged.clone();
-                    const SAFETY_FACTOR: f64 = 1.2;
-
-                    for path in calc_steiner_tree_paths(self.input, &self.map, SAFETY_FACTOR) {
-                        for &c in path.iter() {
-                            if !digged.is_digged(c) {
-                                digged.dig(c);
-                                self.policies.push_back(Box::new(IncreasingPolicy::new(c)));
-                            }
-                        }
-                    }
-                */
+        while self.policies.len() == 0 && self.stage < self.strategies.len() {
+            while self.strategies[self.stage].is_completed() {
                 self.stage += 1;
-                continue;
             }
+
+            let policies = self.strategies[self.stage].get_next_policies(self.input, &mut self.map);
 
             for policy in policies {
                 self.policies.push_back(policy);
@@ -93,6 +75,7 @@ impl<'a> Solver<'a> {
 
 trait Strategy {
     fn get_next_policies(&mut self, input: &Input, map: &mut MapState) -> Vec<Box<dyn Policy>>;
+    fn is_completed(&self) -> bool;
 }
 
 trait Policy {

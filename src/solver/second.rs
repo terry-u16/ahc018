@@ -4,11 +4,15 @@ use super::{steiner_tree::calc_steiner_tree_paths, Strategy};
 
 pub struct SkippingPathStrategy {
     iter: usize,
+    is_completed: bool,
 }
 
 impl SkippingPathStrategy {
     pub fn new() -> Self {
-        Self { iter: 0 }
+        Self {
+            iter: 0,
+            is_completed: false,
+        }
     }
 }
 
@@ -18,13 +22,14 @@ impl Strategy for SkippingPathStrategy {
         input: &crate::input::Input,
         map: &mut crate::map::MapState,
     ) -> Vec<Box<dyn super::Policy>> {
-        const MAX_ITER: usize = 5;
-        if self.iter >= MAX_ITER {
+        const DIST_SERIES: [usize; 10] = [20, 18, 16, 14, 12, 10, 10, 10, 10, 10];
+        if self.iter >= DIST_SERIES.len() {
+            self.is_completed = true;
             return vec![];
         }
 
+        let near_threshold = DIST_SERIES[self.iter];
         self.iter += 1;
-        let near_threshold = if self.iter <= 2 { 20 } else { 10 };
 
         map.update_prediction();
         let paths = calc_steiner_tree_paths(input, map, 1.5);
@@ -39,5 +44,9 @@ impl Strategy for SkippingPathStrategy {
         }
 
         policies
+    }
+
+    fn is_completed(&self) -> bool {
+        self.is_completed
     }
 }

@@ -37,8 +37,8 @@ impl RandomBoringStrategy {
     }
 
     fn get_random_poicies(&self, input: &Input, map: &MapState) -> Vec<Box<dyn Policy>> {
-        const KEEP_OUT_DIST: usize = 25;
-        const TARGET_COUNT: usize = 50;
+        const KEEP_OUT_DIST: usize = 40;
+        const TARGET_COUNT: usize = 20;
         let remain = TARGET_COUNT - (input.water_count + input.house_count);
         let mut rng = Pcg64Mcg::new(42);
         let mut policies: Vec<Box<dyn Policy>> = vec![];
@@ -73,5 +73,9 @@ impl Strategy for RandomBoringStrategy {
 
         self.stage += 1;
         result
+    }
+
+    fn is_completed(&self) -> bool {
+        self.stage == 3
     }
 }
