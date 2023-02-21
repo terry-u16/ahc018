@@ -8,7 +8,7 @@ use crate::{
     input::Input,
     map::MapState,
     output::{Action, DiggingResult},
-    solver::steiner_tree::test,
+    solver::steiner_tree::calc_steiner_tree_paths,
 };
 
 use self::first::RandomBoringStrategy;
@@ -45,7 +45,17 @@ impl<'a> Solver<'a> {
                 self.map.dump_pred(self.input, 1000);
                 eprintln!();
 
-                test(&self.input, &self.map);
+                let mut digged = self.map.digged.clone();
+                const SAFETY_FACTOR: f64 = 1.2;
+
+                for path in calc_steiner_tree_paths(self.input, &self.map, SAFETY_FACTOR) {
+                    for &c in path.iter() {
+                        if !digged.is_digged(c) {
+                            digged.dig(c);
+                            self.policies.push_back(Box::new(IncreasingPolicy::new(c)));
+                        }
+                    }
+                }
 
                 self.stage += 1;
                 continue;
@@ -82,4 +92,28 @@ trait Strategy {
 trait Policy {
     fn target(&self) -> Coordinate;
     fn next_power(&mut self) -> i32;
+}
+
+struct IncreasingPolicy {
+    count: usize,
+    target: Coordinate,
+}
+
+impl IncreasingPolicy {
+    fn new(target: Coordinate) -> Self {
+        Self { count: 0, target }
+    }
+}
+
+impl Policy for IncreasingPolicy {
+    fn target(&self) -> Coordinate {
+        self.target
+    }
+
+    fn next_power(&mut self) -> i32 {
+        const POWER_SERIES: [i32; 5] = [20, 30, 50, 100, 200];
+        let result = POWER_SERIES[self.count.min(POWER_SERIES.len() - 1)];
+        self.count += 1;
+        result
+    }
 }

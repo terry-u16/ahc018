@@ -6,11 +6,12 @@ use crate::{
     map::MapState,
     ChangeMinMax,
 };
+use itertools::Itertools;
 use rand::{seq::SliceRandom, Rng};
 use rand_pcg::Pcg64Mcg;
 use std::{cmp::Reverse, collections::BinaryHeap};
 
-use self::mst::Edge;
+use self::mst::{Edge, MstEdgeAggregator};
 
 #[derive(Debug, Clone)]
 struct Environment<'a> {
@@ -21,9 +22,9 @@ struct Environment<'a> {
 }
 
 impl<'a> Environment<'a> {
-    fn new(input: &'a Input, map: &MapState) -> Self {
+    fn new(input: &'a Input, map: &MapState, safety_factor: f64) -> Self {
         let fixed_positions = Self::get_fixed_positions(input);
-        let dists = Self::get_dists(&fixed_positions, input, map);
+        let dists = Self::get_dists(&fixed_positions, input, map, safety_factor);
 
         let mut edges = vec![];
 
@@ -57,9 +58,13 @@ impl<'a> Environment<'a> {
             .collect()
     }
 
-    fn get_dists(positions: &[Coordinate], input: &Input, map: &MapState) -> Vec<Map2d<i32>> {
+    fn get_dists(
+        positions: &[Coordinate],
+        input: &Input,
+        map: &MapState,
+        safety_factor: f64,
+    ) -> Vec<Map2d<i32>> {
         const INF: i32 = std::i32::MAX / 2;
-        const SAFETY_FACTOR: f64 = 1.5;
         let n = input.map_size;
         let mut all_dists = vec![];
 
@@ -81,7 +86,7 @@ impl<'a> Environment<'a> {
                         let added_cost = if map.digged.is_digged(next) {
                             0
                         } else {
-                            map.get_pred_cost(next, SAFETY_FACTOR, input)
+                            map.get_pred_cost(next, safety_factor, input)
                         };
                         let next_dist = dist + added_cost;
 
@@ -272,10 +277,15 @@ fn generate_action(env: &Environment, state: &State, rng: &mut Pcg64Mcg) -> Box<
     Box::new(NoOp)
 }
 
-pub fn test(input: &Input, map: &MapState) {
-    let env = Environment::new(input, map);
+pub fn calc_steiner_tree_paths(
+    input: &Input,
+    map: &MapState,
+    safety_factor: f64,
+) -> Vec<Vec<Coordinate>> {
+    let env = Environment::new(input, map, safety_factor);
     let state = State::new();
-    annealing(&env, state, 0.1);
+    let state = annealing(&env, state, 0.1);
+    restore_steiner_paths(&env, &state, map, safety_factor)
 }
 
 fn annealing(env: &Environment, initial_state: State, duration: f64) -> State {
@@ -346,4 +356,74 @@ fn annealing(env: &Environment, initial_state: State, duration: f64) -> State {
     eprintln!("");
 
     best_state
+}
+
+fn restore_steiner_paths(
+    env: &Environment,
+    state: &State,
+    map: &MapState,
+    safety_factor: f64,
+) -> Vec<Vec<Coordinate>> {
+    const INF: i32 = std::i32::MAX / 2;
+    let edge_candidates = state.get_edge_candidates(env);
+    let n = env.fixed_positions.len() + state.waypoints.len();
+    let edges = mst::calculate_mst(&env.input, n, edge_candidates, MstEdgeAggregator::new());
+    let mut paths = vec![];
+    let positions = env
+        .fixed_positions
+        .iter()
+        .chain(state.waypoints.iter())
+        .copied()
+        .collect_vec();
+
+    for edge in edges.iter() {
+        if edge.cost() == 0 {
+            continue;
+        }
+
+        let start = edge.i();
+        let goal = edge.j();
+        let map_size = env.input.map_size;
+        let mut distances = Map2d::new(vec![INF; map_size * map_size], map_size);
+        let mut from = Map2d::new(vec![Coordinate::new(!0, !0); map_size * map_size], map_size);
+        let mut queue = BinaryHeap::new();
+        distances[positions[start]] = 0;
+        queue.push(Reverse((0, positions[start])));
+
+        while let Some(Reverse((dist, c))) = queue.pop() {
+            if distances[c] < dist {
+                continue;
+            }
+
+            for adj in ADJACENTS.iter() {
+                let next = c + *adj;
+
+                if next.in_map(map_size) {
+                    let added_cost = if map.digged.is_digged(next) {
+                        0
+                    } else {
+                        map.get_pred_cost(next, safety_factor, env.input)
+                    };
+                    let next_dist = dist + added_cost;
+
+                    if distances[next].change_min(next_dist) {
+                        queue.push(Reverse((next_dist, next)));
+                        from[next] = c;
+                    }
+                }
+            }
+        }
+
+        let mut c = positions[goal];
+        let mut path = vec![c];
+
+        while c != positions[start] {
+            c = from[c];
+            path.push(c);
+        }
+
+        paths.push(path);
+    }
+
+    paths
 }

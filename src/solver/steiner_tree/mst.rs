@@ -11,16 +11,16 @@ impl Edge {
         Self { packed }
     }
 
-    fn cost(&self) -> i32 {
+    pub(super) fn cost(&self) -> i32 {
         (self.packed >> 32) as i32
     }
 
-    fn i(&self) -> usize {
+    pub(super) fn i(&self) -> usize {
         const MASK: usize = (1 << 16) - 1;
         ((self.packed >> 16) as usize) & MASK
     }
 
-    fn j(&self) -> usize {
+    pub(super) fn j(&self) -> usize {
         const MASK: usize = (1 << 16) - 1;
         (self.packed as usize) & MASK
     }
