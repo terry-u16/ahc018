@@ -5,6 +5,7 @@ mod input;
 mod map;
 mod network;
 mod output;
+mod solver;
 
 use std::{
     io::{self, BufReader},
