@@ -2,6 +2,7 @@ use crate::{
     acl::dsu::Dsu,
     common::grid::{Coordinate, Map2d, ADJACENTS},
     input::Input,
+    network::{NNModule, UNet},
     ChangeMinMax,
 };
 use itertools::izip;
@@ -13,11 +14,12 @@ const MIN_STRENGTH: i32 = 10;
 const MAX_STRENGTH: i32 = 5000;
 const DEFAULT_STRENGTH: i32 = 100;
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct MapState {
     pub digged: DiggedMap,
     pub damages: Map2d<i32>,
-    pub predicted_strengths: Map2d<i32>,
+    pub predicted_sturdiness: Map2d<i32>,
+    net: UNet,
     map_size: usize,
 }
 
@@ -25,13 +27,14 @@ impl MapState {
     pub fn new(input: &Input) -> Self {
         let digged = DiggedMap::new(input.map_size, &input.waters);
         let damages = Map2d::new(vec![0; input.map_size * input.map_size], input.map_size);
-        let predicted_strengths =
+        let predicted_sturdiness =
             Map2d::new(vec![DEFAULT_STRENGTH; MINI_SIZE * MINI_SIZE], MINI_SIZE);
 
         Self {
             digged,
             damages,
-            predicted_strengths,
+            predicted_sturdiness,
+            net: UNet::new(),
             map_size: input.map_size,
         }
     }
@@ -47,7 +50,23 @@ impl MapState {
         }
     }
 
-    pub fn export_tensor(&self) -> Array3<f32> {
+    pub fn get_pred_sturdiness(&self, c: Coordinate, safety_factor: f64) -> i32 {
+        let pred = self.predicted_sturdiness[c];
+        let s = (pred as f64 * safety_factor).round() as i32;
+        s
+    }
+
+    pub fn get_pred_cost(&self, c: Coordinate, safety_factor: f64, input: &Input) -> i32 {
+        self.get_pred_sturdiness(c, safety_factor) + input.exhausting_energy
+    }
+
+    pub fn update_prediction(&mut self) {
+        let x = self.export_tensor();
+        let y = self.net.apply(&x);
+        self.import_tensor(&y);
+    }
+
+    fn export_tensor(&self) -> Array3<f32> {
         const INF: f32 = std::f32::MAX;
         const DIGGED: f32 = 1.0;
         const NOT_DIGGED: f32 = 0.0;
@@ -103,13 +122,13 @@ impl MapState {
         stack![Axis(0), str_tensor, dig_tensor]
     }
 
-    pub fn import_tensor(&mut self, predicted: &Array3<f32>) {
+    fn import_tensor(&mut self, predicted: &Array3<f32>) {
         for row in 0..MINI_SIZE {
             for col in 0..MINI_SIZE {
                 let c = Coordinate::new(row, col);
                 let value = (predicted[[0, c.row, c.col]] * MAX_STRENGTH as f32).round() as i32;
                 let value = value.clamp(MIN_STRENGTH, MAX_STRENGTH);
-                self.predicted_strengths[c] = value;
+                self.predicted_sturdiness[c] = value;
             }
         }
     }
@@ -133,7 +152,7 @@ impl MapState {
                     }
                 }
 
-                if self.predicted_strengths[c] >= threshold {
+                if self.predicted_sturdiness[c] >= threshold {
                     eprint!("##");
                 } else {
                     eprint!("  ");
