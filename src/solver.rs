@@ -10,7 +10,6 @@ use crate::{
     input::Input,
     map::MapState,
     output::{Action, DiggingResult},
-    solver::steiner_tree::calc_steiner_tree_paths,
 };
 
 use self::{first::RandomBoringStrategy, second::SkippingPathStrategy, third::FullPathStrategy};
@@ -55,7 +54,7 @@ impl<'a> Solver<'a> {
         }
 
         let policy = self.policies.front_mut().unwrap();
-        Action::new(policy.target(), policy.next_power())
+        Action::new(policy.target(), policy.next_power(&self.map))
     }
 
     pub fn update(&mut self, result: DiggingResult) {
@@ -80,7 +79,7 @@ trait Strategy {
 
 trait Policy {
     fn target(&self) -> Coordinate;
-    fn next_power(&mut self) -> i32;
+    fn next_power(&mut self, map: &MapState) -> i32;
 }
 
 struct IncreasingPolicy {
@@ -99,10 +98,34 @@ impl Policy for IncreasingPolicy {
         self.target
     }
 
-    fn next_power(&mut self) -> i32 {
+    fn next_power(&mut self, _map: &MapState) -> i32 {
         const POWER_SERIES: [i32; 5] = [20, 30, 50, 100, 200];
         let result = POWER_SERIES[self.count.min(POWER_SERIES.len() - 1)];
         self.count += 1;
         result
+    }
+}
+
+struct PredictedPolicy {
+    target: Coordinate,
+    safety_factor: f64,
+}
+
+impl PredictedPolicy {
+    fn new(target: Coordinate, safety_factor: f64) -> Self {
+        Self {
+            target,
+            safety_factor,
+        }
+    }
+}
+
+impl Policy for PredictedPolicy {
+    fn target(&self) -> Coordinate {
+        self.target
+    }
+
+    fn next_power(&mut self, map: &MapState) -> i32 {
+        map.get_pred_sturdiness(self.target, self.safety_factor)
     }
 }

@@ -32,7 +32,7 @@ impl Strategy for SkippingPathStrategy {
         self.iter += 1;
 
         map.update_prediction();
-        let paths = calc_steiner_tree_paths(input, map, 1.5);
+        let paths = calc_steiner_tree_paths(input, map, 1.2);
         let mut digged = map.digged.clone();
         let mut policies: Vec<Box<dyn super::Policy>> = vec![];
 

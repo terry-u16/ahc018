@@ -1,4 +1,4 @@
-use super::{steiner_tree::calc_steiner_tree_paths, IncreasingPolicy, Strategy};
+use super::{steiner_tree::calc_steiner_tree_paths, PredictedPolicy, Strategy};
 
 pub struct FullPathStrategy {
     is_completed: bool,
@@ -19,14 +19,14 @@ impl Strategy for FullPathStrategy {
         map: &mut crate::map::MapState,
     ) -> Vec<Box<dyn super::Policy>> {
         map.update_prediction();
-        let paths = calc_steiner_tree_paths(input, map, 1.5);
+        let paths = calc_steiner_tree_paths(input, map, 1.2);
         let mut digged = map.digged.clone();
         let mut policies: Vec<Box<dyn super::Policy>> = vec![];
 
         for &c in paths.iter().flatten() {
             if !digged.is_digged(c) {
                 digged.dig(c);
-                policies.push(Box::new(IncreasingPolicy::new(c)));
+                policies.push(Box::new(PredictedPolicy::new(c, 1.2)));
             }
         }
 
