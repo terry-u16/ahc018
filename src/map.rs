@@ -133,6 +133,7 @@ impl MapState {
         }
     }
 
+    #[allow(dead_code)]
     pub fn dump_pred(&self, input: &Input, threshold: i32) {
         for row in 0..MINI_SIZE {
             'square: for col in 0..MINI_SIZE {
@@ -213,6 +214,7 @@ impl DiggedMap {
         (self.flags[c] & DIGGED_FLAG) > 0
     }
 
+    #[allow(dead_code)]
     pub fn is_connected(&mut self, c: Coordinate) -> bool {
         let c_index = c.to_index(self.map_size);
         self.dsu.same(c_index, self.water_master())

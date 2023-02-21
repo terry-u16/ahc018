@@ -1,6 +1,5 @@
 mod acl;
 mod common;
-mod init_solution;
 mod input;
 mod map;
 mod network;
@@ -12,7 +11,6 @@ use std::{
     time::Instant,
 };
 
-use init_solution::InitSolver;
 use output::{output, DiggingResult};
 use proconio::source::line::LineSource;
 #[allow(unused_imports)]

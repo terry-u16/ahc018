@@ -284,7 +284,7 @@ pub fn calc_steiner_tree_paths(
 ) -> Vec<Vec<Coordinate>> {
     let env = Environment::new(input, map, safety_factor);
     let state = State::new();
-    let state = annealing(&env, state, 0.1);
+    let state = annealing(&env, state, 0.05);
     restore_steiner_paths(&env, &state, map, safety_factor)
 }
 
@@ -343,8 +343,6 @@ fn annealing(env: &Environment, initial_state: State, duration: f64) -> State {
 
         valid_iter += 1;
     }
-
-    dbg!(&best_state);
 
     eprintln!("===== annealing =====");
     eprintln!("init score : {}", init_score);
