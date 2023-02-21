@@ -22,6 +22,7 @@ impl Strategy for FullPathStrategy {
         let paths = calc_steiner_tree_paths(input, map, 1.2);
         let mut digged = map.digged.clone();
         let mut policies: Vec<Box<dyn super::Policy>> = vec![];
+        map.dump_pred(input, 1000);
 
         for &c in paths.iter().flatten() {
             if !digged.is_digged(c) {
