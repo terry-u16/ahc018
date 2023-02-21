@@ -1,4 +1,5 @@
 mod first;
+mod second;
 mod steiner_tree;
 
 use std::collections::VecDeque;
@@ -11,7 +12,7 @@ use crate::{
     solver::steiner_tree::calc_steiner_tree_paths,
 };
 
-use self::first::RandomBoringStrategy;
+use self::{first::RandomBoringStrategy, second::SkippingPathStrategy};
 
 pub struct Solver<'a> {
     input: &'a Input,
@@ -24,7 +25,10 @@ pub struct Solver<'a> {
 impl<'a> Solver<'a> {
     pub fn new(input: &'a Input) -> Self {
         let map = MapState::new(input);
-        let strategies: Vec<Box<dyn Strategy>> = vec![Box::new(RandomBoringStrategy::new())];
+        let strategies: Vec<Box<dyn Strategy>> = vec![
+            Box::new(RandomBoringStrategy::new()),
+            Box::new(SkippingPathStrategy::new()),
+        ];
 
         Self {
             input,
@@ -37,26 +41,26 @@ impl<'a> Solver<'a> {
 
     pub fn get_next_action(&mut self) -> Action {
         while self.policies.len() == 0 {
-            let policies = self.strategies[self.stage].get_next_policies(self.input, &self.map);
+            let policies = self.strategies[self.stage].get_next_policies(self.input, &mut self.map);
 
             if policies.len() == 0 {
                 // 途中経過を出力
                 self.map.update_prediction();
                 self.map.dump_pred(self.input, 1000);
                 eprintln!();
+                /*
+                    let mut digged = self.map.digged.clone();
+                    const SAFETY_FACTOR: f64 = 1.2;
 
-                let mut digged = self.map.digged.clone();
-                const SAFETY_FACTOR: f64 = 1.2;
-
-                for path in calc_steiner_tree_paths(self.input, &self.map, SAFETY_FACTOR) {
-                    for &c in path.iter() {
-                        if !digged.is_digged(c) {
-                            digged.dig(c);
-                            self.policies.push_back(Box::new(IncreasingPolicy::new(c)));
+                    for path in calc_steiner_tree_paths(self.input, &self.map, SAFETY_FACTOR) {
+                        for &c in path.iter() {
+                            if !digged.is_digged(c) {
+                                digged.dig(c);
+                                self.policies.push_back(Box::new(IncreasingPolicy::new(c)));
+                            }
                         }
                     }
-                }
-
+                */
                 self.stage += 1;
                 continue;
             }
@@ -86,7 +90,7 @@ impl<'a> Solver<'a> {
 }
 
 trait Strategy {
-    fn get_next_policies(&mut self, input: &Input, map: &MapState) -> Vec<Box<dyn Policy>>;
+    fn get_next_policies(&mut self, input: &Input, map: &mut MapState) -> Vec<Box<dyn Policy>>;
 }
 
 trait Policy {
