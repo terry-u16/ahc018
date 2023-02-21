@@ -1,6 +1,7 @@
 mod first;
 mod second;
 mod steiner_tree;
+mod third;
 
 use std::collections::VecDeque;
 
@@ -12,7 +13,7 @@ use crate::{
     solver::steiner_tree::calc_steiner_tree_paths,
 };
 
-use self::{first::RandomBoringStrategy, second::SkippingPathStrategy};
+use self::{first::RandomBoringStrategy, second::SkippingPathStrategy, third::FullPathStrategy};
 
 pub struct Solver<'a> {
     input: &'a Input,
@@ -28,6 +29,7 @@ impl<'a> Solver<'a> {
         let strategies: Vec<Box<dyn Strategy>> = vec![
             Box::new(RandomBoringStrategy::new()),
             Box::new(SkippingPathStrategy::new()),
+            Box::new(FullPathStrategy::new()),
         ];
 
         Self {
