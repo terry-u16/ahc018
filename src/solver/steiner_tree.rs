@@ -213,8 +213,8 @@ impl MoveWaypoint {
             let upper = (env.input.map_size - 1) as f64;
             let dr = gen_diff(rng);
             let dc = gen_diff(rng);
-            let row = (c.row as f64 + dr).round().clamp(0.0, upper) as usize;
-            let col = (c.col as f64 + dc).round().clamp(0.0, upper) as usize;
+            let row = (c.row as f64 + dr).round().max(0.0).min(upper) as usize;
+            let col = (c.col as f64 + dc).round().max(0.0).min(upper) as usize;
             let next_c = Coordinate::new(row, col);
 
             if state.waypoints.contains(&next_c) {
