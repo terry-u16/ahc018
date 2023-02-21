@@ -113,6 +113,35 @@ impl MapState {
             }
         }
     }
+
+    pub fn dump_pred(&self, input: &Input, threshold: i32) {
+        for row in 0..MINI_SIZE {
+            'square: for col in 0..MINI_SIZE {
+                let c = Coordinate::new(row, col);
+
+                for &w in input.waters.iter() {
+                    if c == w / 5 {
+                        eprint!("[]");
+                        continue 'square;
+                    }
+                }
+
+                for &h in input.houses.iter() {
+                    if c == h / 5 {
+                        eprint!("<>");
+                        continue 'square;
+                    }
+                }
+
+                if self.predicted_strengths[c] >= threshold {
+                    eprint!("##");
+                } else {
+                    eprint!("  ");
+                }
+            }
+            eprintln!();
+        }
+    }
 }
 
 const DIGGED_FLAG: u8 = 1 << 0;

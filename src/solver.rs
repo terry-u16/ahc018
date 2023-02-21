@@ -6,6 +6,7 @@ use crate::{
     common::grid::Coordinate,
     input::Input,
     map::MapState,
+    network::{NNModule, UNet},
     output::{Action, DiggingResult},
 };
 
@@ -38,6 +39,14 @@ impl<'a> Solver<'a> {
             let policies = self.strategies[self.stage].get_next_policies(self.input, &self.map);
 
             if policies.len() == 0 {
+                // 途中経過を出力
+                let net = UNet::new();
+                let x = self.map.export_tensor();
+                let y = net.apply(&x);
+                self.map.import_tensor(&y);
+                self.map.dump_pred(self.input, 1000);
+                eprintln!();
+
                 self.stage += 1;
                 continue;
             }
