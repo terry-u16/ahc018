@@ -27,7 +27,7 @@ def read_image(path: str) -> np.ndarray:
     return array
 
 
-def kernel(x0: np.matrix, x1: np.matrix, tau) -> float:
+def kernel(x0: np.matrix, x1: np.matrix) -> float:
     # ガウスカーネル
     THETA1 = 100.0
     THETA2 = 20.0
