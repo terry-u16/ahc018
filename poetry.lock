@@ -344,7 +344,7 @@ python-versions = ">=3.7"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.10"
-content-hash = "91c7c7c289c8e183f9ebda016f1a47242f83cebe4eb5cd2f9e7c92077ab04d9a"
+content-hash = "dd090302e518cce246beb736e316dfaeb6e617e7127226d101a51bba41badb15"
 
 [metadata.files]
 bayesian-optimization = [
