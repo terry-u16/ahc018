@@ -8,7 +8,7 @@ from PIL import Image
 RAW_SIZE = 200
 SIZE = 40
 STRIDE = 200 // SIZE
-IMG_NO = 0
+IMG_NO = 148
 CNN_PATH = "data/nn_history/20230221_0037_学習データをnumpyに変更"
 
 
@@ -129,28 +129,33 @@ def gaussian_process_regression(
     return mu, var
 
 
-def plot(y_truth: np.matrix, y_mu: np.matrix, y_std: np.matrix):
-    fig = plt.figure(figsize=(11, 10))
-    ax = fig.add_subplot(2, 2, 1)
+def plot(y_truth: np.matrix, y_mu: np.matrix, y_lower: np.matrix, y_upper: np.matrix):
+    fig = plt.figure(figsize=(16, 8))
+    ax = fig.add_subplot(2, 3, 1)
     heatmap = ax.pcolor(y_truth, cmap="jet")
     heatmap.set_clim([0, 5000])
-    fig.colorbar(heatmap)
-
-    ax = fig.add_subplot(2, 2, 2)
-    heatmap = ax.pcolor(y_mu, cmap="jet")
-    heatmap.set_clim([0, 5000])
-    fig.colorbar(heatmap)
-
-    ax = fig.add_subplot(2, 2, 3)
-    heatmap = ax.pcolor(y_std, cmap="jet")
-    heatmap.set_clim([0, 2000])
     fig.colorbar(heatmap)
 
     path = f"{CNN_PATH}/pred/{IMG_NO + 0:0>4}.bmp"
     nn_pred = Image.open(path)
     nn_pred = np.array(nn_pred, dtype=np.float64) * 5000 / 255
-    ax = fig.add_subplot(2, 2, 4)
+    ax = fig.add_subplot(2, 3, 2)
     heatmap = ax.pcolor(nn_pred, cmap="jet")
+    heatmap.set_clim([0, 5000])
+    fig.colorbar(heatmap)
+
+    ax = fig.add_subplot(2, 3, 4)
+    heatmap = ax.pcolor(y_lower, cmap="jet")
+    heatmap.set_clim([0, 5000])
+    fig.colorbar(heatmap)
+
+    ax = fig.add_subplot(2, 3, 5)
+    heatmap = ax.pcolor(y_mu, cmap="jet")
+    heatmap.set_clim([0, 5000])
+    fig.colorbar(heatmap)
+
+    ax = fig.add_subplot(2, 3, 6)
+    heatmap = ax.pcolor(y_upper, cmap="jet")
     heatmap.set_clim([0, 5000])
     fig.colorbar(heatmap)
 
@@ -193,10 +198,12 @@ for i in range(SIZE):
 (y_pred_mu, y_pred_var) = gaussian_process_regression(x_test, x_train, y_train)
 y_pred_mu += y_mean
 y_pred_std = np.sqrt(np.where(y_pred_var >= 0, y_pred_var, 0))
+y_pred_lower = y_pred_mu - y_pred_std
 y_pred_upper = y_pred_mu + y_pred_std
 y_pred_mu = np.power(np.array(y_pred_mu).reshape((SIZE, SIZE)), POWER_RATIO)
-y_pred_std = (
-    np.power(np.array(y_pred_upper).reshape((SIZE, SIZE)), POWER_RATIO) - y_pred_mu
-)
+y_pred_lower = np.power(np.array(y_pred_lower).reshape((SIZE, SIZE)), POWER_RATIO)
+y_pred_upper = np.power(np.array(y_pred_upper).reshape((SIZE, SIZE)), POWER_RATIO)
+y_pred_lower = np.where(y_pred_lower >= 10, y_pred_lower, 10)
+y_pred_upper = np.where(y_pred_upper <= 5000, y_pred_upper, 5000)
 
-plot(image, y_pred_mu, y_pred_std)
+plot(image, y_pred_mu, y_pred_lower, y_pred_upper)
