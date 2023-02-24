@@ -7,8 +7,8 @@ import numpy as np
 from PIL import Image
 
 SIZE = 200
-IMG_NO = 23
-
+IMG_NO = 0
+random.seed(42)
 
 def read_image(path: str) -> np.ndarray:
     array = np.zeros((SIZE,), dtype=np.float64)
@@ -174,8 +174,11 @@ for i in range(SIZE):
 
 (y_pred_mu, y_pred_var) = gaussian_process_regression(x_test, x_train, y_train)
 SIGMA = 1
+y_pred_var = np.where(y_pred_var >= 0, y_pred_var, 0)
 y_lower = y_pred_mu - np.sqrt(y_pred_var) * SIGMA
 y_upper = y_pred_mu + np.sqrt(y_pred_var) * SIGMA
+y_lower = np.where(y_lower >= 0, y_lower, 0)
+y_upper = np.where(y_upper <= 5000, y_upper, 5000)
 y_pred_mu = np.power(np.array(y_pred_mu).reshape((SIZE,)), POWER_RATIO)
 y_lower = np.power(np.array(y_lower).reshape((SIZE,)), POWER_RATIO)
 y_upper = np.power(np.array(y_upper).reshape((SIZE,)), POWER_RATIO)
