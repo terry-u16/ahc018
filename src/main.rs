@@ -5,6 +5,7 @@ mod map;
 mod network;
 mod output;
 mod solver;
+mod gaussean_process;
 
 use std::{
     io::{self, BufReader},

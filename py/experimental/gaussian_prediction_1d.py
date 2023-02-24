@@ -7,7 +7,7 @@ import numpy as np
 from PIL import Image
 
 SIZE = 200
-IMG_NO = 0
+IMG_NO = 66
 random.seed(42)
 
 def read_image(path: str) -> np.ndarray:
@@ -64,7 +64,7 @@ def grid_search_theta(x: np.matrix, y: np.matrix) -> Tuple[float, float, float]:
         for t2_pow in range(3, 6):
             t2 = math.pow(2.0, t2_pow)
             t2 = t2 * t2
-            for t3_pow in range(-2, 3):
+            for t3_pow in range(-2, 4):
                 t3 = math.pow(2.0, t3_pow)
                 k = kernel_mat(x, t1, t2, t3)
                 prob = kernel_prob(k, y)
