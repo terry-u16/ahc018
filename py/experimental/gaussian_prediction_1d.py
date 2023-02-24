@@ -1,3 +1,4 @@
+import heapq
 import math
 import random
 from typing import List, Tuple
@@ -7,19 +8,59 @@ import numpy as np
 from PIL import Image
 
 SIZE = 200
-IMG_NO = 66
+IMG_NO = 20
 random.seed(42)
 
+
 def read_image(path: str) -> np.ndarray:
-    array = np.zeros((SIZE,), dtype=np.float64)
+    array = np.zeros((SIZE, SIZE), dtype=np.float64)
     with open(path) as f:
         _ = f.readline()
 
-        line = list(map(int, f.readline().split()))
-        for col, v in enumerate(line):
-            array[col] += v
+        for row in range(SIZE):
+            line = list(map(int, f.readline().split()))
+            for col, v in enumerate(line):
+                array[row, col] = v
 
     return array
+
+
+def dijkstra(dist_map: np.ndarray, si: int, sj: int, gi: int, gj: int) -> np.ndarray:
+    INF = 1000000000
+    dists = [[INF] * SIZE for _ in range(SIZE)]
+    trail = [[(-1, -1)] * SIZE for _ in range(SIZE)]
+    queue = [(0, si, sj)]
+    dists[si][sj] = 0
+    diffs = [(-1, 0), (1, 0), (0, -1), (0, 1)]
+
+    while len(queue) > 0:
+        (d, i, j) = heapq.heappop(queue)
+
+        if dists[i][j] < d:
+            continue
+
+        for (di, dj) in diffs:
+            ni = i + di
+            nj = j + dj
+
+            if 0 <= ni and ni < SIZE and 0 <= nj and nj < SIZE:
+                next_dist = dist_map[ni, nj]
+                if dists[ni][nj] > next_dist:
+                    dists[ni][nj] = next_dist
+                    trail[ni][nj] = i, j
+                    heapq.heappush(queue, (next_dist, ni, nj))
+
+    i = gi
+    j = gj
+    dist_stack = [dist_map[i, j]]
+
+    while (i, j) != (si, sj):
+        i, j = trail[i][j]
+        dist_stack.append(dist_map[i, j])
+
+    dist_stack.reverse()
+
+    return np.array(dist_stack)
 
 
 def kernel(
@@ -61,10 +102,10 @@ def grid_search_theta(x: np.matrix, y: np.matrix) -> Tuple[float, float, float]:
     best_prob = -1e100
     for t1_pow in range(2, 8):
         t1 = math.pow(2.0, t1_pow)
-        for t2_pow in range(3, 6):
+        for t2_pow in range(1, 6):
             t2 = math.pow(2.0, t2_pow)
             t2 = t2 * t2
-            for t3_pow in range(-2, 4):
+            for t3_pow in range(0, 5):
                 t3 = math.pow(2.0, t3_pow)
                 k = kernel_mat(x, t1, t2, t3)
                 prob = kernel_prob(k, y)
@@ -119,11 +160,11 @@ def plot(
     x_train: np.matrix,
     y_train: np.matrix,
 ):
-    x = np.arange(SIZE)
-    y_truth = np.array(y_truth).reshape((SIZE,))
-    y_mu = np.array(y_mu).reshape((SIZE,))
-    y_lower = np.array(y_lower).reshape((SIZE,))
-    y_upper = np.array(y_upper).reshape((SIZE,))
+    x = np.arange(len(y_truth))
+    y_truth = np.array(y_truth).flatten()
+    y_mu = np.array(y_mu).flatten()
+    y_lower = np.array(y_lower).flatten()
+    y_upper = np.array(y_upper).flatten()
     x_train = np.array(x_train).flatten()
     y_train = np.array(y_train).flatten()
     fig = plt.figure()
@@ -137,18 +178,36 @@ def plot(
 
 image = read_image(f"data/in/{IMG_NO:0>4}.txt")
 
+while True:
+    si = random.randint(0, SIZE - 1)
+    sj = random.randint(0, SIZE - 1)
+    gi = random.randint(0, SIZE - 1)
+    gj = random.randint(0, SIZE - 1)
+
+    dist = abs(si - gi) + abs(sj - gj)
+
+    if dist >= 100 and image[si, sj] <= 500 and image[gi, gj] <= 500:
+        break
+
+path = dijkstra(image, si, sj, gi, gj)
+path_len = len(path)
+
 
 def f(x: float) -> float:
     x = int(round(x))
-    return image[x]
+    return path[x]
 
 
 x_train_raw = []
 y_train_raw = []
+x_train_raw.append(0)
+y_train_raw.append(f(0))
+x_train_raw.append(len(path) - 1)
+y_train_raw.append(f(len(path) - 1))
 
 for _ in range(20):
     while True:
-        x = random.randint(0, SIZE - 1)
+        x = random.randint(1, len(path) - 2)
 
         ok = True
         for xi in x_train_raw:
@@ -159,28 +218,30 @@ for _ in range(20):
         if ok:
             break
 
-    noise = random.randint(0, 50)
     x_train_raw.append(x)
-    y_train_raw.append(f(x) + noise)
+    y_train_raw.append(f(x))
 
 POWER_RATIO = 2.0
 x_train = np.matrix(x_train_raw).T
 y_train = np.power(np.matrix(y_train_raw).T, 1 / POWER_RATIO)
 
-x_test = np.matrix(range(SIZE), dtype=np.float64).reshape(SIZE, 1)
+x_test = np.matrix(range(path_len), dtype=np.float64).reshape(path_len, 1)
 
-for i in range(SIZE):
+for i in range(path_len):
     x_test[i] = i
 
+train_mean = y_train.mean()
+y_train -= train_mean
 (y_pred_mu, y_pred_var) = gaussian_process_regression(x_test, x_train, y_train)
+y_pred_mu += train_mean
 SIGMA = 1
 y_pred_var = np.where(y_pred_var >= 0, y_pred_var, 0)
 y_lower = y_pred_mu - np.sqrt(y_pred_var) * SIGMA
 y_upper = y_pred_mu + np.sqrt(y_pred_var) * SIGMA
 y_lower = np.where(y_lower >= 0, y_lower, 0)
 y_upper = np.where(y_upper <= 5000, y_upper, 5000)
-y_pred_mu = np.power(np.array(y_pred_mu).reshape((SIZE,)), POWER_RATIO)
-y_lower = np.power(np.array(y_lower).reshape((SIZE,)), POWER_RATIO)
-y_upper = np.power(np.array(y_upper).reshape((SIZE,)), POWER_RATIO)
+y_pred_mu = np.power(np.array(y_pred_mu), POWER_RATIO)
+y_lower = np.power(np.array(y_lower), POWER_RATIO)
+y_upper = np.power(np.array(y_upper), POWER_RATIO)
 
-plot(image, y_pred_mu, y_lower, y_upper, x_train_raw, y_train_raw)
+plot(path, y_pred_mu, y_lower, y_upper, x_train_raw, y_train_raw)
