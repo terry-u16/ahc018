@@ -56,7 +56,7 @@ impl GaussianPredictor {
             let k = self.kernel(&xj, &xj, j + train_len, j + train_len);
 
             mean.push(kernel.dot(&kernel_y));
-            variance.push(k - (kernel_y.transpose() * kernel_lu.solve(&kernel_y).unwrap())[(0, 0)]);
+            variance.push(k - (kernel.transpose() * kernel_lu.solve(&kernel).unwrap())[(0, 0)]);
         }
 
         Self::postprocess(mean, variance, y_average)
@@ -100,10 +100,8 @@ impl GaussianPredictor {
     }
 
     fn kernel(&self, x0: &DVector<f64>, x1: &DVector<f64>, i: usize, j: usize) -> f64 {
-        assert!(x0.shape().1 == 1);
-        assert!(x1.shape().1 == 1);
         let diff = x0 - x1;
-        let norm = diff.component_mul(&diff)[(0, 0)];
+        let norm = diff.component_mul(&diff).sum();
         let mut kernel = self.params.theta1 * (-norm / self.params.theta2).exp();
         if i == j {
             kernel += self.params.theta3;
