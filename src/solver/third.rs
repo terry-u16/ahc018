@@ -73,10 +73,17 @@ impl PreBoringChildStrategy {
             is_completed: false,
         }
     }
+
+    fn gen_dp_policy(c: Coordinate, input: &Input, map: &MapState) -> DpPolicy {
+        let mean = map.get_pred_sturdiness(c, 0.0) as f64;
+        let stddev =
+            (map.get_pred_sturdiness(c, 1.0) - map.get_pred_sturdiness(c, -1.0)) as f64 / 2.0;
+        DpPolicy::new(input, c, mean, stddev * stddev)
+    }
 }
 
 impl Strategy for PreBoringChildStrategy {
-    fn get_next_policies(&mut self, _input: &Input, map: &mut MapState) -> Vec<Box<dyn Policy>> {
+    fn get_next_policies(&mut self, input: &Input, map: &mut MapState) -> Vec<Box<dyn Policy>> {
         const STRIDE: usize = 10;
         let mut digged = map.digged.clone();
         let mut strategies: Vec<Box<dyn Policy>> = vec![];
@@ -85,14 +92,14 @@ impl Strategy for PreBoringChildStrategy {
             let mut last_index = 0;
 
             if !digged.is_digged(path[0]) {
-                strategies.push(Box::new(IncreasingPolicy::new(path[0])));
+                strategies.push(Box::new(Self::gen_dp_policy(path[0], input, map)));
                 digged.dig(path[0]);
             }
 
             for i in 1..(path.len() - 1) {
                 if !digged.is_digged(path[i]) {
                     if i - last_index >= STRIDE {
-                        strategies.push(Box::new(IncreasingPolicy::new(path[i])));
+                        strategies.push(Box::new(Self::gen_dp_policy(path[i], input, map)));
                         digged.dig(path[i]);
                         last_index = i;
                     }
@@ -102,7 +109,11 @@ impl Strategy for PreBoringChildStrategy {
             }
 
             if !digged.is_digged(path[path.len() - 1]) {
-                strategies.push(Box::new(IncreasingPolicy::new(path[path.len() - 1])));
+                strategies.push(Box::new(Self::gen_dp_policy(
+                    path[path.len() - 1],
+                    input,
+                    map,
+                )));
                 digged.dig(path[path.len() - 1]);
             }
         }
