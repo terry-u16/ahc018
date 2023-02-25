@@ -6,12 +6,13 @@ authors = ["terry-u16 <terry-u16@users.noreply.github.com>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = "^3.10"
+python = "~3.10"
 numpy = "^1.24.2"
 pandas = "^1.5.3"
 matplotlib = "^3.7.0"
 bayesian-optimization = "^1.4.2"
 pillow = "^9.4.0"
+scipy = "^1.10.1"
 
 [tool.poetry.group.dev.dependencies]
 black = "^23.1.0"

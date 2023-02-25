@@ -1,8 +1,10 @@
 import math
+import time
 from typing import List, Tuple
 
 import matplotlib.pyplot as plt
 import numpy as np
+import scipy.linalg as linalg
 from PIL import Image
 
 RAW_SIZE = 200
@@ -109,12 +111,15 @@ def gaussian_process_regression(
     t1, t2, t3 = grid_search_theta(x_train, y_train)
     k = kernel_mat(x_train, t1, t2, t3)
 
-    k_inv = np.linalg.inv(k)
+    # k_inv = np.linalg.inv(k)
+    lu_pair = linalg.lu_factor(k)
 
-    yy = k_inv * y_train
+    # yy = k_inv * y_train
+    yy = linalg.lu_solve(lu_pair, y_train)
     mu = np.matrix(list(range(m)), dtype=np.float64).reshape((m, 1))
     var = np.matrix(list(range(m)), dtype=np.float64).reshape((m, 1))
 
+    since = time.perf_counter()
     for i in range(m):
         kk = np.matrix(list(range(n)), dtype=np.float64).reshape((n, 1))
 
@@ -124,7 +129,11 @@ def gaussian_process_regression(
         s = kernel(x_test[i], x_test[i], t1, t2, t3, i + n, i + n)
 
         mu[i] = kk.T * yy
-        var[i] = s - kk.T * k_inv * kk
+        # var[i] = s - kk.T * k_inv * kk
+        var[i] = s - kk.T * linalg.lu_solve(lu_pair, kk)
+
+    until = time.perf_counter()
+    print(until - since)
 
     return mu, var
 
