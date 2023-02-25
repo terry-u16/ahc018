@@ -4,7 +4,7 @@ use super::{
 };
 use crate::{
     common::grid::Coordinate, gaussean_process::GaussianPredictor, input::Input, map::MapState,
-    solver::IncreasingPolicy, ChangeMinMax,
+    ChangeMinMax,
 };
 use itertools::{izip, Itertools};
 use nalgebra::{DMatrix, DVector};
@@ -458,5 +458,41 @@ impl Policy for DpPolicy {
             format!("expected: {}", self.pred_expected),
             format!("stddev  : {}", self.pred_std_dev),
         ]
+    }
+
+    fn give_up(&self) -> bool {
+        false
+    }
+}
+
+struct IncreasingPolicy {
+    count: usize,
+    target: Coordinate,
+}
+
+impl IncreasingPolicy {
+    fn new(target: Coordinate) -> Self {
+        Self { count: 0, target }
+    }
+}
+
+impl Policy for IncreasingPolicy {
+    fn target(&self) -> Coordinate {
+        self.target
+    }
+
+    fn next_power(&mut self, _map: &MapState) -> i32 {
+        const POWER_SERIES: [i32; 5] = [20, 30, 50, 100, 200];
+        let result = POWER_SERIES[self.count.min(POWER_SERIES.len() - 1)];
+        self.count += 1;
+        result
+    }
+
+    fn give_up(&self) -> bool {
+        false
+    }
+
+    fn comment(&self) -> Vec<String> {
+        vec![]
     }
 }

@@ -2,9 +2,9 @@ use std::cmp::Reverse;
 
 use itertools::Itertools;
 
-use crate::solver::IncreasingPolicy;
+use crate::{common::grid::Coordinate, map::MapState};
 
-use super::{steiner_tree::calc_steiner_tree_paths, Strategy};
+use super::{steiner_tree::calc_steiner_tree_paths, Policy, Strategy};
 
 pub struct SkippingPathStrategy {
     iter: usize,
@@ -48,7 +48,7 @@ impl Strategy for SkippingPathStrategy {
         let mut policies: Vec<Box<dyn super::Policy>> = vec![];
 
         for &c in candidates.iter() {
-            if !digged.has_digged_nearby(c, near_threshold) {
+            if !digged.has_revealed_nearby(c, near_threshold) {
                 digged.dig(c);
                 policies.push(Box::new(IncreasingPolicy::new(c)));
             }
@@ -59,5 +59,43 @@ impl Strategy for SkippingPathStrategy {
 
     fn is_completed(&self) -> bool {
         self.is_completed
+    }
+}
+
+struct IncreasingPolicy {
+    count: usize,
+    target: Coordinate,
+    total_damage: i32,
+}
+
+impl IncreasingPolicy {
+    fn new(target: Coordinate) -> Self {
+        Self {
+            count: 0,
+            target,
+            total_damage: 0,
+        }
+    }
+}
+
+impl Policy for IncreasingPolicy {
+    fn target(&self) -> Coordinate {
+        self.target
+    }
+
+    fn next_power(&mut self, _map: &MapState) -> i32 {
+        const POWER_SERIES: [i32; 5] = [20, 30, 50, 100, 200];
+        let result = POWER_SERIES[self.count.min(POWER_SERIES.len() - 1)];
+        self.count += 1;
+        self.total_damage += result;
+        result
+    }
+
+    fn give_up(&self) -> bool {
+        self.total_damage > 3500
+    }
+
+    fn comment(&self) -> Vec<String> {
+        vec![]
     }
 }

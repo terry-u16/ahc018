@@ -37,6 +37,15 @@ impl<'a> Solver<'a> {
     }
 
     pub fn get_next_action(&mut self) -> Action {
+        while let Some(p) = self.policies.front() {
+            if p.give_up() {
+                self.map.digged.mark_revealed(p.target());
+                self.policies.pop_front();
+            } else {
+                break;
+            }
+        }
+
         while self.policies.len() == 0 {
             while self.strategy.is_completed() {
                 self.stage += 1;
@@ -95,33 +104,6 @@ trait Strategy {
 trait Policy {
     fn target(&self) -> Coordinate;
     fn next_power(&mut self, map: &MapState) -> i32;
+    fn give_up(&self) -> bool;
     fn comment(&self) -> Vec<String>;
-}
-
-struct IncreasingPolicy {
-    count: usize,
-    target: Coordinate,
-}
-
-impl IncreasingPolicy {
-    fn new(target: Coordinate) -> Self {
-        Self { count: 0, target }
-    }
-}
-
-impl Policy for IncreasingPolicy {
-    fn target(&self) -> Coordinate {
-        self.target
-    }
-
-    fn next_power(&mut self, _map: &MapState) -> i32 {
-        const POWER_SERIES: [i32; 5] = [20, 30, 50, 100, 200];
-        let result = POWER_SERIES[self.count.min(POWER_SERIES.len() - 1)];
-        self.count += 1;
-        result
-    }
-
-    fn comment(&self) -> Vec<String> {
-        vec![]
-    }
 }

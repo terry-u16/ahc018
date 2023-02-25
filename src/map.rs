@@ -81,7 +81,7 @@ impl MapState {
             }
         }
 
-        if self.prediction_count < 3 {
+        if self.prediction_count < 4 {
             // パラメータをグリッドサーチ
             let t1_cands = (3..10).map(|v| 2.0f64.powi(v)).collect_vec();
             let t2_cands = (2..12)
@@ -145,6 +145,7 @@ impl MapState {
 
 const DIGGED_FLAG: u8 = 1 << 0;
 const WATER_FLAG: u8 = 1 << 1;
+const REVEALED_FLAG: u8 = 1 << 2;
 
 #[derive(Debug, Clone)]
 pub struct DiggedMap {
@@ -172,6 +173,7 @@ impl DiggedMap {
     pub fn dig(&mut self, c: Coordinate) {
         assert!((self.flags[c] & DIGGED_FLAG) == 0);
         self.flags[c] |= DIGGED_FLAG;
+        self.mark_revealed(c);
         let c_index = c.to_index(self.map_size);
 
         // 水源だったら超頂点と繋ぐ
@@ -189,8 +191,16 @@ impl DiggedMap {
         }
     }
 
+    pub fn mark_revealed(&mut self, c: Coordinate) {
+        self.flags[c] |= REVEALED_FLAG
+    }
+
     pub fn is_digged(&self, c: Coordinate) -> bool {
         (self.flags[c] & DIGGED_FLAG) > 0
+    }
+
+    pub fn is_revealed(&self, c: Coordinate) -> bool {
+        (self.flags[c] & REVEALED_FLAG) > 0
     }
 
     #[allow(dead_code)]
@@ -199,7 +209,7 @@ impl DiggedMap {
         self.dsu.same(c_index, self.water_master())
     }
 
-    pub fn has_digged_nearby(&self, c: Coordinate, dist: usize) -> bool {
+    pub fn has_revealed_nearby(&self, c: Coordinate, dist: usize) -> bool {
         let row0 = c.row.saturating_sub(dist);
         let row1 = (c.row + dist).min(self.map_size - 1);
 
@@ -210,7 +220,7 @@ impl DiggedMap {
             let col1 = (c.col + d).min(self.map_size - 1);
 
             for col in col0..=col1 {
-                if self.is_digged(Coordinate::new(row, col)) {
+                if self.is_revealed(Coordinate::new(row, col)) {
                     return true;
                 }
             }
