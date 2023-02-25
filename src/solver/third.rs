@@ -1,4 +1,4 @@
-use super::{steiner_tree::calc_steiner_tree_paths, Policy, PredictedPolicy, Strategy};
+use super::{steiner_tree::calc_steiner_tree_paths, Policy, Strategy};
 use crate::{common::grid::Coordinate, input::Input, map::MapState, ChangeMinMax};
 use itertools::Itertools;
 use std::collections::VecDeque;
@@ -40,7 +40,7 @@ impl FullPathStrategy {
         let mut policies = vec![];
 
         for c in target_points.iter() {
-            let expected = map.get_pred_sturdiness(*c, 1.0) as f64;
+            let expected = Self::get_expected(input, *c, map);
             let policy = DpPolicy::new(input, *c, expected, variance);
             policies.push(policy);
         }
@@ -109,6 +109,34 @@ impl FullPathStrategy {
         }
 
         target_points
+    }
+
+    fn get_expected(input: &Input, c: Coordinate, map: &MapState) -> f64 {
+        // 適当に周囲を探す
+        const DIST: isize = 5;
+        let mut sum = 0;
+        let mut count = 0;
+
+        for dr in -DIST..=DIST {
+            let remain = DIST - dr.abs();
+
+            for dc in -remain..=remain {
+                let row = (c.row as isize + dr) as usize;
+                let col = (c.col as isize + dc) as usize;
+                let next = Coordinate::new(row, col);
+
+                if next.in_map(input.map_size) && map.digged.is_digged(next) {
+                    count += 1;
+                    sum += map.get_pred_sturdiness(next, 1.0);
+                }
+            }
+        }
+
+        if count == 0 {
+            map.get_pred_sturdiness(c, 1.0) as f64
+        } else {
+            sum as f64 / count as f64
+        }
     }
 }
 
