@@ -121,7 +121,9 @@ impl GaussianPredictor {
         let mut best_t1 = self.params.theta1;
         let mut best_t2 = self.params.theta2;
         let mut best_t3 = self.params.theta3;
+
         let kernel = self.kernel_mat(&x);
+
         let mut best_liklihood = Self::kernel_likelihood(&kernel, &y);
 
         for &t1 in t1_cands {
@@ -133,6 +135,7 @@ impl GaussianPredictor {
                     let likelihood = Self::kernel_likelihood(&kernel, &y);
 
                     if best_liklihood.change_max(likelihood) {
+                        eprintln!("{} {} {} {}", t1, t2, t3, likelihood);
                         best_t1 = t1;
                         best_t2 = t2;
                         best_t3 = t3;

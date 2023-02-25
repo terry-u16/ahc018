@@ -22,9 +22,9 @@ struct Environment<'a> {
 }
 
 impl<'a> Environment<'a> {
-    fn new(input: &'a Input, map: &MapState, safety_factor: f64) -> Self {
+    fn new(input: &'a Input, map: &MapState, sigma: f64) -> Self {
         let fixed_positions = Self::get_fixed_positions(input);
-        let dists = Self::get_dists(&fixed_positions, input, map, safety_factor);
+        let dists = Self::get_dists(&fixed_positions, input, map, sigma);
 
         let mut edges = vec![];
 
@@ -62,7 +62,7 @@ impl<'a> Environment<'a> {
         positions: &[Coordinate],
         input: &Input,
         map: &MapState,
-        safety_factor: f64,
+        sigma: f64,
     ) -> Vec<Map2d<i32>> {
         const INF: i32 = std::i32::MAX / 2;
         let n = input.map_size;
@@ -86,7 +86,7 @@ impl<'a> Environment<'a> {
                         let added_cost = if map.digged.is_digged(next) {
                             0
                         } else {
-                            map.get_pred_cost(next, safety_factor, input)
+                            map.get_pred_cost(next, sigma, input)
                         };
                         let next_dist = dist + added_cost;
 
@@ -277,15 +277,11 @@ fn generate_action(env: &Environment, state: &State, rng: &mut Pcg64Mcg) -> Box<
     Box::new(NoOp)
 }
 
-pub fn calc_steiner_tree_paths(
-    input: &Input,
-    map: &MapState,
-    safety_factor: f64,
-) -> Vec<Vec<Coordinate>> {
-    let env = Environment::new(input, map, safety_factor);
+pub fn calc_steiner_tree_paths(input: &Input, map: &MapState, sigma: f64) -> Vec<Vec<Coordinate>> {
+    let env = Environment::new(input, map, sigma);
     let state = State::new();
     let state = annealing(&env, state, 0.05);
-    restore_steiner_paths(&env, &state, map, safety_factor)
+    restore_steiner_paths(&env, &state, map, sigma)
 }
 
 fn annealing(env: &Environment, initial_state: State, duration: f64) -> State {

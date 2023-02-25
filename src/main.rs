@@ -3,7 +3,6 @@ mod common;
 mod gaussean_process;
 mod input;
 mod map;
-mod network;
 mod output;
 mod solver;
 

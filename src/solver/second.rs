@@ -31,8 +31,9 @@ impl Strategy for SkippingPathStrategy {
         let near_threshold = DIST_SERIES[self.iter];
         self.iter += 1;
 
-        map.update_prediction();
-        let paths = calc_steiner_tree_paths(input, map, 1.2);
+        map.update_prediction(&input);
+
+        let paths = calc_steiner_tree_paths(input, map, -0.3);
         let mut digged = map.digged.clone();
         let mut policies: Vec<Box<dyn super::Policy>> = vec![];
 

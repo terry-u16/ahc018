@@ -18,7 +18,9 @@ pub struct ConnectionStrategy {
 
 impl ConnectionStrategy {
     pub fn new(input: &Input, map: &MapState) -> Self {
-        let paths = steiner_tree::calc_steiner_tree_paths(input, map, 1.0);
+        map.dump_pred(input, 1000);
+
+        let paths = steiner_tree::calc_steiner_tree_paths(input, map, 0.0);
         let child_strategy = Self::gen_child_strategy(0, map, &paths);
         Self {
             paths,
@@ -205,7 +207,7 @@ impl FullPathChildStrategy {
 
         for (mean, var) in y_mean.iter_mut().zip(y_var.iter_mut()) {
             // TODO: たまに変な値になるので要調査
-            var.change_max(2.0 * 2.0);
+            var.change_max(1.0);
             mean.change_max(LOWER);
             mean.change_min(UPPER);
             y_lower.push((*mean - var.sqrt()).max(LOWER));
