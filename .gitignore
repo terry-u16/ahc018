@@ -6,3 +6,6 @@
 .hypothesis
 /tools/seeds.txt
 __pycache__
+/AtCoderHeuristicContest018/.vs
+/AtCoderHeuristicContest018/AtCoderHeuristicContest018.Statistics/bin
+/AtCoderHeuristicContest018/AtCoderHeuristicContest018.Statistics/obj
