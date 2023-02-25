@@ -113,11 +113,12 @@ impl GaussianPredictor {
     }
 
     pub fn grid_search_theta(&mut self, t1_cands: &[f64], t2_cands: &[f64], t3_cands: &[f64]) {
-        let mut best_t1 = std::f64::NAN;
-        let mut best_t2 = std::f64::NAN;
-        let mut best_t3 = std::f64::NAN;
-        let mut best_liklihood = std::f64::MIN;
         let (x, y, _) = self.preprocess();
+        let mut best_t1 = self.params.theta1;
+        let mut best_t2 = self.params.theta2;
+        let mut best_t3 = self.params.theta3;
+        let kernel = self.kernel_mat(&x);
+        let mut best_liklihood = Self::kernel_likelihood(&kernel, &y);
 
         for &t1 in t1_cands {
             for &t2 in t2_cands {
