@@ -51,7 +51,11 @@ impl<'a> Solver<'a> {
         }
 
         let policy = self.policies.front_mut().unwrap();
-        Action::new(policy.target(), policy.next_power(&self.map))
+        Action::new(
+            policy.target(),
+            policy.next_power(&self.map),
+            policy.comment(),
+        )
     }
 
     pub fn update(&mut self, result: DiggingResult) {
@@ -91,6 +95,7 @@ trait Strategy {
 trait Policy {
     fn target(&self) -> Coordinate;
     fn next_power(&mut self, map: &MapState) -> i32;
+    fn comment(&self) -> Vec<String>;
 }
 
 struct IncreasingPolicy {
@@ -115,31 +120,8 @@ impl Policy for IncreasingPolicy {
         self.count += 1;
         result
     }
-}
 
-struct PredictedPolicy {
-    target: Coordinate,
-    safety_factor: f64,
-    max: i32,
-}
-
-impl PredictedPolicy {
-    fn new(target: Coordinate, safety_factor: f64, input: &Input) -> Self {
-        Self {
-            target,
-            safety_factor,
-            max: input.exhausting_energy * 10,
-        }
-    }
-}
-
-impl Policy for PredictedPolicy {
-    fn target(&self) -> Coordinate {
-        self.target
-    }
-
-    fn next_power(&mut self, map: &MapState) -> i32 {
-        map.get_pred_sturdiness(self.target, self.safety_factor)
-            .min(self.max)
+    fn comment(&self) -> Vec<String> {
+        vec![]
     }
 }

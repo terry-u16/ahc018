@@ -2,19 +2,24 @@ use crate::common::grid::Coordinate;
 use proconio::{input, source::line::LineSource};
 use std::io::BufRead;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Action {
     pub coordinate: Coordinate,
     pub power: i32,
+    pub comment: Vec<String>,
 }
 
 impl Action {
-    pub fn new(coordinate: Coordinate, power: i32) -> Self {
-        Self { coordinate, power }
+    pub fn new(coordinate: Coordinate, power: i32, comment: Vec<String>) -> Self {
+        Self {
+            coordinate,
+            power,
+            comment,
+        }
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DiggingResult {
     /// 岩盤が破壊できていない
     NotBroken(Action),
@@ -24,12 +29,10 @@ pub enum DiggingResult {
     Completed,
 }
 
-pub fn output(
-    action: Action,
-    comment: &str,
-    mut source: &mut LineSource<impl BufRead>,
-) -> DiggingResult {
-    println!("#{}", comment);
+pub fn output(action: Action, mut source: &mut LineSource<impl BufRead>) -> DiggingResult {
+    for s in action.comment.iter() {
+        println!("#{}", &s);
+    }
     println!(
         "{} {} {}",
         action.coordinate.row, action.coordinate.col, action.power

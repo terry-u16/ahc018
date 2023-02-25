@@ -1,5 +1,5 @@
 use super::{
-    steiner_tree::{self, calc_steiner_tree_paths},
+    steiner_tree::{self},
     Policy, Strategy,
 };
 use crate::{
@@ -14,7 +14,6 @@ pub struct ConnectionStrategy {
     paths: Vec<Vec<Coordinate>>,
     child_strategy: Box<dyn Strategy>,
     stage: usize,
-    is_completed: bool,
 }
 
 impl ConnectionStrategy {
@@ -25,7 +24,6 @@ impl ConnectionStrategy {
             paths,
             child_strategy,
             stage: 0,
-            is_completed: false,
         }
     }
 
@@ -150,15 +148,16 @@ impl FullPathChildStrategy {
             }
 
             // パラメータをグリッドサーチ
-            let t1_cands = (4..8).map(|v| 2.0f64.powi(v)).collect_vec();
-            let t2_cands = (3..6)
+            let t1_cands = (2..8).map(|v| 2.0f64.powi(v)).collect_vec();
+            let t2_cands = (1..6)
                 .map(|v| {
                     let v = 2.0f64.powi(v);
                     v * v
                 })
                 .collect_vec();
-            let t3_cands = (0..4).map(|v| 2.0f64.powi(v)).collect_vec();
+            let t3_cands = (0..5).map(|v| 2.0f64.powi(v)).collect_vec();
             gaussean.grid_search_theta(&t1_cands, &t2_cands, &t3_cands);
+
             gausseans.push(gaussean);
         }
 
@@ -196,7 +195,8 @@ impl FullPathChildStrategy {
         }
 
         let x = DMatrix::from_row_slice(target_indices.len(), 2, &x);
-        let (mut y_mean, y_var) = gaussean.gaussian_process_regression(&x);
+
+        let (mut y_mean, mut y_var) = gaussean.gaussian_process_regression(&x);
         let mut y_lower = vec![];
         let mut y_upper = vec![];
 
@@ -204,11 +204,13 @@ impl FullPathChildStrategy {
         const LOWER: f64 = 3.16227766;
         const UPPER: f64 = 70.71067811;
 
-        for (mean, &var) in y_mean.iter_mut().zip(y_var.iter()) {
+        for (mean, var) in y_mean.iter_mut().zip(y_var.iter_mut()) {
+            // TODO: たまに変な値になるので要調査
+            var.change_max(2.0 * 2.0);
             mean.change_max(LOWER);
             mean.change_min(UPPER);
-            y_lower.push((*mean - var).max(LOWER));
-            y_upper.push((*mean + var).min(UPPER));
+            y_lower.push((*mean - var.sqrt()).max(LOWER));
+            y_upper.push((*mean + var.sqrt()).min(UPPER));
         }
 
         let mut result = vec![];
@@ -235,9 +237,9 @@ impl FullPathChildStrategy {
 
         for (&i, (lower, mean, upper)) in target_points.iter().zip(predictions.iter()) {
             // 本来は2乗した空間での正規分布を考える必要があるが、
-            // めんどくさいので上側と下側（±σ）を2で割って標準偏差としている
-            let std_div = (upper - lower) / 2.0;
-            let policy = DpPolicy::new(input, path[i], *mean, std_div * std_div);
+            // めんどくさいので上側と下側（±σ）を2で割ったものを標準偏差としている
+            let std_dev = (upper - lower) / 2.0;
+            let policy = DpPolicy::new(input, path[i], *mean, std_dev * std_dev);
             policies.push(policy);
         }
 
@@ -310,6 +312,8 @@ struct DpPolicy {
     coordinate: Coordinate,
     tasks: VecDeque<i32>,
     emergency_power: i32,
+    pred_expected: f64,
+    pred_std_dev: f64,
 }
 
 impl DpPolicy {
@@ -325,6 +329,8 @@ impl DpPolicy {
             coordinate: c,
             tasks: task_queue,
             emergency_power,
+            pred_expected: expected,
+            pred_std_dev: variance.sqrt(),
         }
     }
 
@@ -444,5 +450,12 @@ impl Policy for DpPolicy {
         } else {
             self.emergency_power
         }
+    }
+
+    fn comment(&self) -> Vec<String> {
+        vec![
+            format!("expected: {}", self.pred_expected),
+            format!("stddev  : {}", self.pred_std_dev),
+        ]
     }
 }
