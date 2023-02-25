@@ -138,10 +138,10 @@ impl FullPathChildStrategy {
         for i in 0..paths.len() {
             let mut gaussean = GaussianPredictor::new();
 
-            for &c in paths[i].iter() {
+            for (i, &c) in paths[i].iter().enumerate() {
                 if map.digged.is_digged(c) {
                     // 事前にsqrtをかけておく
-                    let x = DVector::from_vec(vec![c.row as f64, c.col as f64]);
+                    let x = DVector::from_vec(vec![i as f64]);
                     let y = (map.damages[c] as f64).sqrt();
                     gaussean.add_data(x, y);
                 }
@@ -178,10 +178,10 @@ impl FullPathChildStrategy {
         let path = &self.paths[path_id];
         gaussean.clear();
 
-        for &c in path.iter() {
+        for (i, &c) in path.iter().enumerate() {
             if map.digged.is_digged(c) {
                 // 事前にsqrtをかけておく
-                let x = DVector::from_vec(vec![c.row as f64, c.col as f64]);
+                let x = DVector::from_vec(vec![i as f64]);
                 let y = (map.damages[c] as f64).sqrt();
                 gaussean.add_data(x, y);
             }
@@ -190,11 +190,10 @@ impl FullPathChildStrategy {
         let mut x = vec![];
 
         for &i in target_indices.iter() {
-            x.push(path[i].row as f64);
-            x.push(path[i].col as f64);
+            x.push(i as f64);
         }
 
-        let x = DMatrix::from_row_slice(target_indices.len(), 2, &x);
+        let x = DMatrix::from_row_slice(target_indices.len(), 1, &x);
 
         let (mut y_mean, mut y_var) = gaussean.gaussian_process_regression(&x);
         let mut y_lower = vec![];
