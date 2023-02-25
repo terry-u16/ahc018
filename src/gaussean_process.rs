@@ -110,10 +110,10 @@ impl GaussianPredictor {
     }
 
     /// kernelの対数尤度を求める
-    fn kernel_likelihood(kernel: &DMatrix<f64>, y: &DVector<f64>) -> f64 {
-        let kernel_inv = kernel.clone();
-        let kernel_inv = kernel_inv.try_inverse().unwrap();
-        -kernel.determinant().max(1e-100).ln() - (y.transpose() * (kernel_inv * y))[(0, 0)]
+    fn kernel_likelihood(kernel: DMatrix<f64>, y: &DVector<f64>) -> f64 {
+        let det = kernel.determinant().max(1e-100);
+        let kernel_lu = kernel.lu();
+        -det.ln() - (y.transpose() * kernel_lu.solve(y).unwrap())[(0, 0)]
     }
 
     pub fn grid_search_theta(&mut self, t1_cands: &[f64], t2_cands: &[f64], t3_cands: &[f64]) {
@@ -124,7 +124,7 @@ impl GaussianPredictor {
 
         let kernel = self.kernel_mat(&x);
 
-        let mut best_liklihood = Self::kernel_likelihood(&kernel, &y);
+        let mut best_liklihood = Self::kernel_likelihood(kernel, &y);
 
         for &t1 in t1_cands {
             for &t2 in t2_cands {
@@ -132,10 +132,9 @@ impl GaussianPredictor {
                     self.params = GaussianParam::new(t1, t2, t3);
 
                     let kernel = self.kernel_mat(&x);
-                    let likelihood = Self::kernel_likelihood(&kernel, &y);
+                    let likelihood = Self::kernel_likelihood(kernel, &y);
 
                     if best_liklihood.change_max(likelihood) {
-                        eprintln!("{} {} {} {}", t1, t2, t3, likelihood);
                         best_t1 = t1;
                         best_t2 = t2;
                         best_t3 = t3;
