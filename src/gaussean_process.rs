@@ -2,6 +2,7 @@ use crate::ChangeMinMax;
 use itertools::Itertools;
 use nalgebra::{DMatrix, DVector};
 
+#[derive(Debug, Clone)]
 pub struct GaussianPredictor {
     x_list: Vec<DVector<f64>>,
     y_list: Vec<f64>,
@@ -22,11 +23,16 @@ impl GaussianPredictor {
         self.y_list.push(y);
     }
 
+    pub fn clear(&mut self) {
+        self.x_list.clear();
+        self.y_list.clear();
+    }
+
     pub fn gaussian_process_regression(&self, x_pred: &DMatrix<f64>) -> (Vec<f64>, Vec<f64>) {
         let (x_train, y_train, y_average) = self.preprocess();
 
         let train_len = self.x_list.len();
-        let pred_len = x_pred.len();
+        let pred_len = x_pred.shape().0;
 
         let kernel = self.kernel_mat(&x_train);
         let kernel_lu = kernel.lu();
@@ -79,7 +85,7 @@ impl GaussianPredictor {
     }
 
     fn kernel_mat(&self, x: &DMatrix<f64>) -> DMatrix<f64> {
-        let n = x.len();
+        let n = x.shape().0;
         let mut kernel = DMatrix::zeros(n, n);
 
         for i in 0..n {
@@ -94,8 +100,8 @@ impl GaussianPredictor {
     }
 
     fn kernel(&self, x0: &DVector<f64>, x1: &DVector<f64>, i: usize, j: usize) -> f64 {
-        assert!(x0.shape().0 == 1);
-        assert!(x1.shape().0 == 1);
+        assert!(x0.shape().1 == 1);
+        assert!(x1.shape().1 == 1);
         let diff = x0 - x1;
         let norm = diff.component_mul(&diff)[(0, 0)];
         let mut kernel = self.params.theta1 * (-norm / self.params.theta2).exp();
@@ -124,6 +130,7 @@ impl GaussianPredictor {
             for &t2 in t2_cands {
                 for &t3 in t3_cands {
                     self.params = GaussianParam::new(t1, t2, t3);
+
                     let kernel = self.kernel_mat(&x);
                     let likelihood = Self::kernel_likelihood(&kernel, &y);
 

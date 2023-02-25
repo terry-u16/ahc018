@@ -1,47 +1,243 @@
-use super::{steiner_tree::calc_steiner_tree_paths, Policy, Strategy};
-use crate::{common::grid::Coordinate, input::Input, map::MapState, ChangeMinMax};
-use itertools::Itertools;
+use super::{
+    steiner_tree::{self, calc_steiner_tree_paths},
+    Policy, Strategy,
+};
+use crate::{
+    common::grid::Coordinate, gaussean_process::GaussianPredictor, input::Input, map::MapState,
+    solver::IncreasingPolicy, ChangeMinMax,
+};
+use itertools::{izip, Itertools};
+use nalgebra::{DMatrix, DVector};
 use std::collections::VecDeque;
 
-pub struct FullPathStrategy {
-    is_initialized: bool,
-    is_completed: bool,
+pub struct ConnectionStrategy {
     paths: Vec<Vec<Coordinate>>,
+    child_strategy: Box<dyn Strategy>,
+    stage: usize,
+    is_completed: bool,
 }
 
-impl FullPathStrategy {
-    pub fn new() -> Self {
+impl ConnectionStrategy {
+    pub fn new(input: &Input, map: &MapState) -> Self {
+        let paths = steiner_tree::calc_steiner_tree_paths(input, map, 1.0);
+        let child_strategy = Self::gen_child_strategy(0, map, &paths);
         Self {
+            paths,
+            child_strategy,
+            stage: 0,
             is_completed: false,
-            is_initialized: false,
-            paths: vec![],
         }
     }
 
-    fn initialize(&mut self, input: &Input, map: &mut MapState) {
-        map.update_prediction();
-        let paths = calc_steiner_tree_paths(input, map, 1.2);
-        map.dump_pred(input, 1000);
+    fn gen_child_strategy(
+        stage: usize,
+        map: &MapState,
+        paths: &Vec<Vec<Coordinate>>,
+    ) -> Box<dyn Strategy> {
+        let ret: Box<dyn Strategy> = if stage == 0 {
+            Box::new(PreBoringChildStrategy::new(paths.clone()))
+        } else if stage == 1 {
+            Box::new(FullPathChildStrategy::new(paths.clone(), map))
+        } else {
+            unreachable!()
+        };
 
-        self.is_initialized = true;
-        self.paths = paths;
+        ret
+    }
+}
+
+impl Strategy for ConnectionStrategy {
+    fn get_next_policies(&mut self, input: &Input, map: &mut MapState) -> Vec<Box<dyn Policy>> {
+        if self.child_strategy.is_completed() {
+            self.stage += 1;
+            self.child_strategy = Self::gen_child_strategy(self.stage, map, &self.paths);
+        }
+
+        self.child_strategy.get_next_policies(input, map)
+    }
+
+    fn is_completed(&self) -> bool {
+        self.stage == 1 && self.child_strategy.is_completed()
+    }
+}
+
+struct PreBoringChildStrategy {
+    paths: Vec<Vec<Coordinate>>,
+    is_completed: bool,
+}
+
+impl PreBoringChildStrategy {
+    fn new(paths: Vec<Vec<Coordinate>>) -> Self {
+        Self {
+            paths,
+            is_completed: false,
+        }
+    }
+}
+
+impl Strategy for PreBoringChildStrategy {
+    fn get_next_policies(&mut self, _input: &Input, map: &mut MapState) -> Vec<Box<dyn Policy>> {
+        const STRIDE: usize = 10;
+        let mut digged = map.digged.clone();
+        let mut strategies: Vec<Box<dyn Policy>> = vec![];
+
+        for path in self.paths.iter() {
+            let mut last_index = 0;
+
+            if !digged.is_digged(path[0]) {
+                strategies.push(Box::new(IncreasingPolicy::new(path[0])));
+                digged.dig(path[0]);
+            }
+
+            for i in 1..(path.len() - 1) {
+                if !digged.is_digged(path[i]) {
+                    if i - last_index >= STRIDE {
+                        strategies.push(Box::new(IncreasingPolicy::new(path[i])));
+                        digged.dig(path[i]);
+                        last_index = i;
+                    }
+                } else {
+                    last_index = i;
+                }
+            }
+
+            if !digged.is_digged(path[path.len() - 1]) {
+                strategies.push(Box::new(IncreasingPolicy::new(path[path.len() - 1])));
+                digged.dig(path[path.len() - 1]);
+            }
+        }
+
+        self.is_completed = true;
+
+        strategies
+    }
+
+    fn is_completed(&self) -> bool {
+        self.is_completed
+    }
+}
+
+pub struct FullPathChildStrategy {
+    is_completed: bool,
+    paths: Vec<Vec<Coordinate>>,
+    gausseans: Vec<GaussianPredictor>,
+}
+
+impl FullPathChildStrategy {
+    pub fn new(paths: Vec<Vec<Coordinate>>, map: &MapState) -> Self {
+        let gausseans = Self::get_gausseans(map, &paths);
+
+        Self {
+            is_completed: false,
+            paths,
+            gausseans,
+        }
+    }
+
+    fn get_gausseans(map: &MapState, paths: &[Vec<Coordinate>]) -> Vec<GaussianPredictor> {
+        let mut gausseans = vec![];
+
+        for i in 0..paths.len() {
+            let mut gaussean = GaussianPredictor::new();
+
+            for &c in paths[i].iter() {
+                if map.digged.is_digged(c) {
+                    // 事前にsqrtをかけておく
+                    let x = DVector::from_vec(vec![c.row as f64, c.col as f64]);
+                    let y = (map.damages[c] as f64).sqrt();
+                    gaussean.add_data(x, y);
+                }
+            }
+
+            // パラメータをグリッドサーチ
+            let t1_cands = (4..8).map(|v| 2.0f64.powi(v)).collect_vec();
+            let t2_cands = (3..6)
+                .map(|v| {
+                    let v = 2.0f64.powi(v);
+                    v * v
+                })
+                .collect_vec();
+            let t3_cands = (0..4).map(|v| 2.0f64.powi(v)).collect_vec();
+            gaussean.grid_search_theta(&t1_cands, &t2_cands, &t3_cands);
+            gausseans.push(gaussean);
+        }
+
+        gausseans
+    }
+
+    fn predict(
+        &mut self,
+        path_id: usize,
+        target_indices: &[usize],
+        map: &MapState,
+    ) -> Vec<(f64, f64, f64)> {
+        if target_indices.len() == 0 {
+            return vec![];
+        }
+
+        let gaussean = &mut self.gausseans[path_id];
+        let path = &self.paths[path_id];
+        gaussean.clear();
+
+        for &c in path.iter() {
+            if map.digged.is_digged(c) {
+                // 事前にsqrtをかけておく
+                let x = DVector::from_vec(vec![c.row as f64, c.col as f64]);
+                let y = (map.damages[c] as f64).sqrt();
+                gaussean.add_data(x, y);
+            }
+        }
+
+        let mut x = vec![];
+
+        for &i in target_indices.iter() {
+            x.push(path[i].row as f64);
+            x.push(path[i].col as f64);
+        }
+
+        let x = DMatrix::from_row_slice(target_indices.len(), 2, &x);
+        let (mut y_mean, y_var) = gaussean.gaussian_process_regression(&x);
+        let mut y_lower = vec![];
+        let mut y_upper = vec![];
+
+        // sqrt(10), sqrt(5000)
+        const LOWER: f64 = 3.16227766;
+        const UPPER: f64 = 70.71067811;
+
+        for (mean, &var) in y_mean.iter_mut().zip(y_var.iter()) {
+            mean.change_max(LOWER);
+            mean.change_min(UPPER);
+            y_lower.push((*mean - var).max(LOWER));
+            y_upper.push((*mean + var).min(UPPER));
+        }
+
+        let mut result = vec![];
+
+        for (l, m, h) in izip!(&y_lower, &y_mean, &y_upper) {
+            result.push((l * l, m * m, h * h));
+        }
+
+        result
     }
 
     fn get_half_div_policies(
-        &self,
+        &mut self,
         input: &Input,
-        path: &[Coordinate],
+        path_id: usize,
         map: &MapState,
     ) -> Vec<DpPolicy> {
-        let digged_indices = Self::get_digged_indices(path, map);
-        let variance = Self::get_variance(path, &digged_indices, map);
-        let target_points = Self::get_target_points(path, &digged_indices);
+        let digged_indices = Self::get_digged_indices(&self.paths[path_id], map);
+        let target_points = Self::get_target_points(&self.paths[path_id], &digged_indices);
+        let predictions = self.predict(path_id, &target_points, map);
+        let path = &self.paths[path_id];
 
         let mut policies = vec![];
 
-        for c in target_points.iter() {
-            let expected = Self::get_expected(input, *c, map);
-            let policy = DpPolicy::new(input, *c, expected, variance);
+        for (&i, (lower, mean, upper)) in target_points.iter().zip(predictions.iter()) {
+            // 本来は2乗した空間での正規分布を考える必要があるが、
+            // めんどくさいので上側と下側（±σ）を2で割って標準偏差としている
+            let std_div = (upper - lower) / 2.0;
+            let policy = DpPolicy::new(input, path[i], *mean, std_div * std_div);
             policies.push(policy);
         }
 
@@ -51,7 +247,7 @@ impl FullPathStrategy {
     fn get_digged_indices(path: &[Coordinate], map: &MapState) -> Vec<usize> {
         let mut digged_indices = vec![];
 
-        for i in 1..(path.len() - 1) {
+        for i in 0..path.len() {
             let c = path[i];
             if map.digged.is_digged(c) {
                 digged_indices.push(i);
@@ -61,102 +257,36 @@ impl FullPathStrategy {
         digged_indices
     }
 
-    fn get_variance(path: &[Coordinate], digged_indices: &[usize], map: &MapState) -> f64 {
-        // 掘られてなかったら適当に0を返す
-        if digged_indices.len() == 0 {
-            return 100.0;
-        }
-
-        let mut variance = 0;
-
-        for &i in digged_indices.iter() {
-            // 予測との2乗誤差を計算する
-            let c = path[i];
-            let pred_diff = map.get_pred_sturdiness(c, 1.0) - map.damages[c];
-            variance += pred_diff * pred_diff;
-        }
-
-        // 0になると面倒なので適当に1を足す
-        (variance + 1) as f64 / digged_indices.len() as f64
-    }
-
-    fn get_target_points(path: &[Coordinate], digged_indices: &[usize]) -> Vec<Coordinate> {
+    fn get_target_points(path: &[Coordinate], digged_indices: &[usize]) -> Vec<usize> {
+        // 必ず両端が掘られているので例外処理は不要
+        assert!(digged_indices.len() >= 2);
+        assert!(digged_indices[0] == 0);
+        assert!(digged_indices[digged_indices.len() - 1] == path.len() - 1);
         let mut target_points = vec![];
 
-        // 端は掘られているということにしてしまう
-        let mut digged = vec![];
-        digged.push(0);
-        for &i in digged_indices.iter() {
-            digged.push(i);
-        }
-        digged.push(path.len() - 1);
+        for i in 0..(digged_indices.len() - 1) {
+            let target = (digged_indices[i] + digged_indices[i + 1]) / 2;
 
-        for i in 0..(digged.len() - 1) {
-            let target = (digged[i] + digged[i + 1]) / 2;
-
-            if target != digged[i] {
-                target_points.push(path[target]);
+            if target != digged_indices[i] {
+                target_points.push(target);
             }
-        }
-
-        // 端が掘られていないケースがあるので追加する
-        if digged_indices.len() == 0 || digged_indices[0] != 0 {
-            target_points.push(path[0]);
-        }
-
-        if digged_indices.len() == 0 || digged_indices[digged_indices.len() - 1] != path.len() - 1 {
-            target_points.push(path[path.len() - 1]);
         }
 
         target_points
     }
-
-    fn get_expected(input: &Input, c: Coordinate, map: &MapState) -> f64 {
-        // 適当に周囲を探す
-        const DIST: isize = 5;
-        let mut sum = 0;
-        let mut count = 0;
-
-        for dr in -DIST..=DIST {
-            let remain = DIST - dr.abs();
-
-            for dc in -remain..=remain {
-                let row = (c.row as isize + dr) as usize;
-                let col = (c.col as isize + dc) as usize;
-                let next = Coordinate::new(row, col);
-
-                if next.in_map(input.map_size) && map.digged.is_digged(next) {
-                    count += 1;
-                    sum += map.get_pred_sturdiness(next, 1.0);
-                }
-            }
-        }
-
-        if count == 0 {
-            map.get_pred_sturdiness(c, 1.0) as f64
-        } else {
-            sum as f64 / count as f64
-        }
-    }
 }
 
-impl Strategy for FullPathStrategy {
+impl Strategy for FullPathChildStrategy {
     fn get_next_policies(
         &mut self,
         input: &crate::input::Input,
         map: &mut crate::map::MapState,
     ) -> Vec<Box<dyn super::Policy>> {
-        if !self.is_initialized {
-            self.initialize(input, map);
-        }
-
-        map.update_prediction();
-
         let mut digged = map.digged.clone();
         let mut policies: Vec<Box<dyn super::Policy>> = vec![];
 
-        for path in self.paths.iter() {
-            for policy in self.get_half_div_policies(input, path, map) {
+        for path_id in 0..self.paths.len() {
+            for policy in self.get_half_div_policies(input, path_id, map) {
                 if !digged.is_digged(policy.coordinate) {
                     digged.dig(policy.coordinate);
                     policies.push(Box::new(policy));

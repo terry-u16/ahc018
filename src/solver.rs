@@ -12,12 +12,12 @@ use crate::{
     output::{Action, DiggingResult},
 };
 
-use self::{first::RandomBoringStrategy, second::SkippingPathStrategy, third::FullPathStrategy};
+use self::{first::RandomBoringStrategy, second::SkippingPathStrategy, third::ConnectionStrategy};
 
 pub struct Solver<'a> {
     input: &'a Input,
     map: MapState,
-    strategies: Vec<Box<dyn Strategy>>,
+    strategy: Box<dyn Strategy>,
     policies: VecDeque<Box<dyn Policy>>,
     stage: usize,
 }
@@ -25,28 +25,25 @@ pub struct Solver<'a> {
 impl<'a> Solver<'a> {
     pub fn new(input: &'a Input) -> Self {
         let map = MapState::new(input);
-        let strategies: Vec<Box<dyn Strategy>> = vec![
-            Box::new(RandomBoringStrategy::new()),
-            Box::new(SkippingPathStrategy::new()),
-            Box::new(FullPathStrategy::new()),
-        ];
+        let strategy = Self::gen_strategy(0, input, &map);
 
         Self {
             input,
             map,
-            strategies,
+            strategy,
             policies: VecDeque::new(),
             stage: 0,
         }
     }
 
     pub fn get_next_action(&mut self) -> Action {
-        while self.policies.len() == 0 && self.stage < self.strategies.len() {
-            while self.strategies[self.stage].is_completed() {
+        while self.policies.len() == 0 {
+            while self.strategy.is_completed() {
                 self.stage += 1;
+                self.strategy = Self::gen_strategy(self.stage, &self.input, &self.map);
             }
 
-            let policies = self.strategies[self.stage].get_next_policies(self.input, &mut self.map);
+            let policies = self.strategy.get_next_policies(self.input, &mut self.map);
 
             for policy in policies {
                 self.policies.push_back(policy);
@@ -69,6 +66,20 @@ impl<'a> Solver<'a> {
         if broken {
             self.policies.pop_front();
         }
+    }
+
+    fn gen_strategy(stage: usize, input: &Input, map: &MapState) -> Box<dyn Strategy> {
+        let ret: Box<dyn Strategy> = if stage == 0 {
+            Box::new(RandomBoringStrategy::new())
+        } else if stage == 1 {
+            Box::new(SkippingPathStrategy::new())
+        } else if stage == 2 {
+            Box::new(ConnectionStrategy::new(input, map))
+        } else {
+            unreachable!()
+        };
+
+        ret
     }
 }
 
