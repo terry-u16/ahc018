@@ -124,11 +124,10 @@ impl Strategy for FullPathStrategy {
 
         map.update_prediction();
 
-        let paths = calc_steiner_tree_paths(input, map, 1.2);
         let mut digged = map.digged.clone();
         let mut policies: Vec<Box<dyn super::Policy>> = vec![];
 
-        for path in paths.iter() {
+        for path in self.paths.iter() {
             for policy in self.get_half_div_policies(input, path, map) {
                 if !digged.is_digged(policy.coordinate) {
                     digged.dig(policy.coordinate);
@@ -162,7 +161,7 @@ impl DpPolicy {
         let task_queue = Self::calc_power_dp(input, &sturdiness, &cumulative_dist);
 
         // 3σやってもダメだったら適当にやる
-        let emergency_power = input.exhausting_energy * 2;
+        let emergency_power = input.exhausting_energy * 5;
 
         Self {
             coordinate: c,
@@ -177,7 +176,7 @@ impl DpPolicy {
         // 3σくらいまで見る
         let upper_bound = ((expected + 3.0 * std_dev).round() as usize).min(5000);
 
-        const MAX_SIZE: usize = 100;
+        const MAX_SIZE: usize = 500;
 
         if upper_bound <= MAX_SIZE {
             return (0..=(upper_bound as i32)).collect_vec();
