@@ -72,6 +72,11 @@ impl PreBoringChildStrategy {
             is_completed: false,
         }
     }
+
+    fn gen_increasing_policy(c: Coordinate, map: &MapState) -> IncreasingPolicy {
+        let two_sigma = map.get_pred_sturdiness(c, -3.0);
+        IncreasingPolicy::new(c, two_sigma)
+    }
 }
 
 impl Strategy for PreBoringChildStrategy {
@@ -84,14 +89,14 @@ impl Strategy for PreBoringChildStrategy {
             let mut last_index = 0;
 
             if !digged.is_digged(path[0]) {
-                strategies.push(Box::new(IncreasingPolicy::new(path[0])));
+                strategies.push(Box::new(Self::gen_increasing_policy(path[0], map)));
                 digged.dig(path[0]);
             }
 
             for i in 1..(path.len() - 1) {
                 if !digged.is_digged(path[i]) {
                     if i - last_index >= STRIDE {
-                        strategies.push(Box::new(IncreasingPolicy::new(path[i])));
+                        strategies.push(Box::new(Self::gen_increasing_policy(path[i], map)));
                         digged.dig(path[i]);
                         last_index = i;
                     }
@@ -101,7 +106,10 @@ impl Strategy for PreBoringChildStrategy {
             }
 
             if !digged.is_digged(path[path.len() - 1]) {
-                strategies.push(Box::new(IncreasingPolicy::new(path[path.len() - 1])));
+                strategies.push(Box::new(Self::gen_increasing_policy(
+                    path[path.len() - 1],
+                    map,
+                )));
                 digged.dig(path[path.len() - 1]);
             }
         }
@@ -478,11 +486,19 @@ impl Policy for DpPolicy {
 struct IncreasingPolicy {
     count: usize,
     target: Coordinate,
+    power_series: Vec<i32>,
 }
 
 impl IncreasingPolicy {
-    fn new(target: Coordinate) -> Self {
-        Self { count: 0, target }
+    fn new(target: Coordinate, two_sigma: i32) -> Self {
+        let first = two_sigma.max(15);
+        let power_series = vec![first, 10, 20, 30, 50, 100];
+
+        Self {
+            count: 0,
+            target,
+            power_series,
+        }
     }
 }
 
@@ -492,8 +508,7 @@ impl Policy for IncreasingPolicy {
     }
 
     fn next_power(&mut self, _map: &MapState) -> i32 {
-        const POWER_SERIES: [i32; 6] = [15, 10, 20, 30, 50, 100];
-        let result = POWER_SERIES[self.count.min(POWER_SERIES.len() - 1)];
+        let result = self.power_series[self.count.min(self.power_series.len() - 1)];
         self.count += 1;
         result
     }
