@@ -74,7 +74,7 @@ impl PreBoringChildStrategy {
     }
 
     fn gen_increasing_policy(c: Coordinate, map: &MapState) -> IncreasingPolicy {
-        let two_sigma = map.get_pred_sturdiness(c, -3.0);
+        let two_sigma = map.get_pred_sturdiness(c, -2.0);
         IncreasingPolicy::new(c, two_sigma)
     }
 }
