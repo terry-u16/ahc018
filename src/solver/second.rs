@@ -29,7 +29,7 @@ impl Strategy for SkippingPathStrategy {
     ) -> Vec<Box<dyn super::Policy>> {
         const DIST_SERIES: [usize; 14] = [35, 27, 24, 21, 18, 15, 12, 10, 10, 10, 10, 10, 10, 10];
         const SIGMA_SERIES: [f64; 14] = [
-            -0.4, -0.35, -0.3, -0.25, -0.2, -0.15, -0.1, -0.05, -0.05, 0.0, 0.0, 0.0, 0.0, 0.0,
+            -0.4, -0.35, -0.3, -0.3, -0.3, -0.2, -0.1, -0.1, -0.05, 0.0, 0.0, 0.0, 0.0, 0.0,
         ];
         if self.iter >= DIST_SERIES.len() {
             self.is_completed = true;
