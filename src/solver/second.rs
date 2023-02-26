@@ -27,17 +27,17 @@ impl Strategy for SkippingPathStrategy {
         map: &mut crate::map::MapState,
     ) -> Vec<Box<dyn super::Policy>> {
         const DIST_SERIES: [usize; 10] = [30, 27, 24, 21, 18, 15, 15, 15, 15, 15];
+        const SIGMA_SERIES: [f64; 10] = [-0.3, -0.3, -0.25, -0.25, -0.2, -0.2, -0.15, -0.15, 0.0, 0.0];
         if self.iter >= DIST_SERIES.len() {
             self.is_completed = true;
             return vec![];
         }
 
         let near_threshold = DIST_SERIES[self.iter];
-        self.iter += 1;
 
         map.update_prediction(&input);
 
-        let paths = calc_steiner_tree_paths(input, map, -0.3);
+        let paths = calc_steiner_tree_paths(input, map, SIGMA_SERIES[self.iter]);
         let mut candidates = paths.iter().flatten().copied().collect_vec();
         candidates.sort_by_cached_key(|&c| {
             let stddev = map.get_pred_sturdiness(c, 0.0) - map.get_pred_sturdiness(c, -1.0);
@@ -53,6 +53,8 @@ impl Strategy for SkippingPathStrategy {
                 policies.push(Box::new(IncreasingPolicy::new(c)));
             }
         }
+        
+        self.iter += 1;
 
         policies
     }
