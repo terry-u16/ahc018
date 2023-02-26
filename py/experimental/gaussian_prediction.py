@@ -148,7 +148,7 @@ def plot(
     y = []
     for i, j in points:
         x.append(j)
-        y.append(i)
+        y.append(RAW_SIZE - i - 0.5)
 
     ax = fig.add_subplot(2, 3, 1)
     ax.scatter(x, y, marker="o", s=5)
@@ -158,7 +158,7 @@ def plot(
     ax.add_patch(patches.Rectangle(xy=(200, 0), width=50, height=200, fc="k"))
 
     ax = fig.add_subplot(2, 3, 2)
-    heatmap = ax.pcolor(y_truth, cmap="jet")
+    heatmap = ax.pcolor(np.flipud(y_truth), cmap="jet")
     heatmap.set_clim([0, 5000])
     fig.colorbar(heatmap)
     ax.set_title("ground truth")
@@ -167,25 +167,25 @@ def plot(
     nn_pred = Image.open(path)
     nn_pred = np.array(nn_pred, dtype=np.float64) * 5000 / 255
     ax = fig.add_subplot(2, 3, 3)
-    heatmap = ax.pcolor(nn_pred, cmap="jet")
+    heatmap = ax.pcolor(np.flipud(nn_pred), cmap="jet")
     heatmap.set_clim([0, 5000])
     fig.colorbar(heatmap)
     ax.set_title("CNN (U-Net)")
 
     ax = fig.add_subplot(2, 3, 4)
-    heatmap = ax.pcolor(y_lower, cmap="jet")
+    heatmap = ax.pcolor(np.flipud(y_lower), cmap="jet")
     heatmap.set_clim([0, 5000])
     fig.colorbar(heatmap)
     ax.set_title("gaussian process (-1.0 sigma)")
 
     ax = fig.add_subplot(2, 3, 5)
-    heatmap = ax.pcolor(y_mu, cmap="jet")
+    heatmap = ax.pcolor(np.flipud(y_mu), cmap="jet")
     heatmap.set_clim([0, 5000])
     fig.colorbar(heatmap)
     ax.set_title("gaussian process (mean)")
 
     ax = fig.add_subplot(2, 3, 6)
-    heatmap = ax.pcolor(y_upper, cmap="jet")
+    heatmap = ax.pcolor(np.flipud(y_upper), cmap="jet")
     heatmap.set_clim([0, 5000])
     fig.colorbar(heatmap)
     ax.set_title("gaussian process (+1.0 sigma)")
