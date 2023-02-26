@@ -113,7 +113,7 @@ impl Policy for IncreasingPolicy {
     }
 
     fn give_up(&mut self) -> bool {
-        let give_up = self.total_damage >= 1000;
+        let give_up = self.total_damage >= 800;
 
         if give_up {
             // ギブアップになったら同じパスのマスは全てキャンセルする

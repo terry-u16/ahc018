@@ -337,7 +337,7 @@ impl DpPolicy {
         let task_queue = Self::calc_power_dp(input, &sturdiness, &cumulative_dist, coef);
 
         // 3σやってもダメだったら適当にやる
-        let emergency_power = input.exhausting_energy * 10;
+        let emergency_power = input.exhausting_energy * 3;
 
         Self {
             coordinate: c,
