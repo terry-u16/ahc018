@@ -26,9 +26,9 @@ impl Strategy for SkippingPathStrategy {
         input: &crate::input::Input,
         map: &mut crate::map::MapState,
     ) -> Vec<Box<dyn super::Policy>> {
-        const DIST_SERIES: [usize; 10] = [30, 27, 24, 21, 18, 15, 15, 15, 15, 15];
+        const DIST_SERIES: [usize; 10] = [30, 27, 24, 21, 18, 15, 12, 10, 10, 10];
         const SIGMA_SERIES: [f64; 10] =
-            [-0.3, -0.3, -0.25, -0.25, -0.2, -0.2, -0.15, -0.15, 0.0, 0.0];
+            [-0.3, -0.3, -0.25, -0.25, -0.2, -0.2, -0.15, -0.15, -0.1, 0.0];
         if self.iter >= DIST_SERIES.len() {
             self.is_completed = true;
             return vec![];
