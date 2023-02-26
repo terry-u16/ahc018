@@ -27,7 +27,8 @@ impl Strategy for SkippingPathStrategy {
         map: &mut crate::map::MapState,
     ) -> Vec<Box<dyn super::Policy>> {
         const DIST_SERIES: [usize; 10] = [30, 27, 24, 21, 18, 15, 15, 15, 15, 15];
-        const SIGMA_SERIES: [f64; 10] = [-0.3, -0.3, -0.25, -0.25, -0.2, -0.2, -0.15, -0.15, 0.0, 0.0];
+        const SIGMA_SERIES: [f64; 10] =
+            [-0.3, -0.3, -0.25, -0.25, -0.2, -0.2, -0.15, -0.15, 0.0, 0.0];
         if self.iter >= DIST_SERIES.len() {
             self.is_completed = true;
             return vec![];
@@ -53,7 +54,7 @@ impl Strategy for SkippingPathStrategy {
                 policies.push(Box::new(IncreasingPolicy::new(c)));
             }
         }
-        
+
         self.iter += 1;
 
         policies
@@ -86,7 +87,7 @@ impl Policy for IncreasingPolicy {
     }
 
     fn next_power(&mut self, _map: &MapState) -> i32 {
-        const POWER_SERIES: [i32; 5] = [20, 30, 50, 100, 200];
+        const POWER_SERIES: [i32; 3] = [50, 150, 200];
         let result = POWER_SERIES[self.count.min(POWER_SERIES.len() - 1)];
         self.count += 1;
         self.total_damage += result;
