@@ -74,7 +74,7 @@ impl PreBoringChildStrategy {
     }
 
     fn gen_increasing_policy(c: Coordinate, map: &MapState) -> IncreasingPolicy {
-        let two_sigma = map.get_pred_sturdiness(c, -2.0);
+        let two_sigma = (map.get_pred_sturdiness(c, -2.0) - map.damages[c]).max(10);
         IncreasingPolicy::new(c, two_sigma)
     }
 }
@@ -249,8 +249,9 @@ impl FullPathChildStrategy {
         for (&i, (lower, mean, upper)) in target_points.iter().zip(predictions.iter()) {
             // 本来は2乗した空間での正規分布を考える必要があるが、
             // めんどくさいので上側と下側（±σ）を2で割ったものを標準偏差としている
+            let mean = (mean - map.damages[path[i]] as f64).max(10.0);
             let std_dev = (upper - lower) / 2.0;
-            let policy = DpPolicy::new(input, path[i], *mean, std_dev * std_dev, coef);
+            let policy = DpPolicy::new(input, path[i], mean, std_dev * std_dev, coef);
             policies.push(policy);
         }
 
