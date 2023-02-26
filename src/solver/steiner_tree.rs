@@ -280,7 +280,7 @@ fn generate_action(env: &Environment, state: &State, rng: &mut Pcg64Mcg) -> Box<
 pub fn calc_steiner_tree_paths(input: &Input, map: &MapState, sigma: f64) -> Vec<Vec<Coordinate>> {
     let env = Environment::new(input, map, sigma);
     let state = State::new();
-    let state = annealing(&env, state, 0.1);
+    let state = annealing(&env, state, 0.15);
     restore_steiner_paths(&env, &state, map, sigma)
 }
 
