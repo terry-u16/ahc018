@@ -37,9 +37,11 @@ impl<'a> Solver<'a> {
     }
 
     pub fn get_next_action(&mut self) -> Action {
-        while let Some(p) = self.policies.front() {
+        while let Some(p) = self.policies.front_mut() {
             if p.give_up() {
                 self.map.mark_give_up(p.target());
+                self.policies.pop_front();
+            } else if p.cancelled() {
                 self.policies.pop_front();
             } else {
                 break;
@@ -104,6 +106,7 @@ trait Strategy {
 trait Policy {
     fn target(&self) -> Coordinate;
     fn next_power(&mut self, map: &MapState) -> i32;
-    fn give_up(&self) -> bool;
+    fn give_up(&mut self) -> bool;
+    fn cancelled(&self) -> bool;
     fn comment(&self) -> Vec<String>;
 }

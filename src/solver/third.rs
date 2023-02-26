@@ -484,7 +484,11 @@ impl Policy for DpPolicy {
         ]
     }
 
-    fn give_up(&self) -> bool {
+    fn give_up(&mut self) -> bool {
+        false
+    }
+
+    fn cancelled(&self) -> bool {
         false
     }
 }
@@ -519,11 +523,15 @@ impl Policy for IncreasingPolicy {
         result
     }
 
-    fn give_up(&self) -> bool {
+    fn give_up(&mut self) -> bool {
         false
     }
 
     fn comment(&self) -> Vec<String> {
         vec![]
+    }
+
+    fn cancelled(&self) -> bool {
+        false
     }
 }

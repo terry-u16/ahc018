@@ -1,14 +1,13 @@
-use std::cmp::Reverse;
-
-use itertools::Itertools;
-
-use crate::{common::grid::Coordinate, map::MapState};
-
 use super::{steiner_tree::calc_steiner_tree_paths, Policy, Strategy};
+use crate::{common::grid::Coordinate, map::MapState};
+use im_rc::HashSet;
+use std::{cell::RefCell, cmp::Reverse, rc::Rc};
 
 pub struct SkippingPathStrategy {
     iter: usize,
     is_completed: bool,
+    bad_paths: Rc<RefCell<HashSet<usize>>>,
+    path_id: usize,
 }
 
 impl SkippingPathStrategy {
@@ -16,6 +15,8 @@ impl SkippingPathStrategy {
         Self {
             iter: 0,
             is_completed: false,
+            bad_paths: Rc::new(RefCell::new(HashSet::new())),
+            path_id: 0,
         }
     }
 }
@@ -40,22 +41,34 @@ impl Strategy for SkippingPathStrategy {
         map.update_prediction(&input);
 
         let paths = calc_steiner_tree_paths(input, map, SIGMA_SERIES[self.iter]);
-        let mut candidates = paths.iter().flatten().copied().collect_vec();
-        candidates.sort_by_cached_key(|&c| {
-            let stddev = map.get_pred_sturdiness(c, 0.0) - map.get_pred_sturdiness(c, -0.1);
+        let mut candidates = vec![];
+
+        for (i, path) in paths.into_iter().enumerate() {
+            for c in path {
+                candidates.push((i, c));
+            }
+        }
+
+        candidates.sort_by_cached_key(|(_, c)| {
+            let stddev = map.get_pred_sturdiness(*c, 0.0) - map.get_pred_sturdiness(*c, -0.1);
             Reverse(stddev)
         });
 
         let mut digged = map.digged.clone();
         let mut policies: Vec<Box<dyn super::Policy>> = vec![];
 
-        for &c in candidates.iter() {
-            if !digged.has_revealed_nearby(c, near_threshold) {
-                digged.dig(c);
-                policies.push(Box::new(IncreasingPolicy::new(c)));
+        for (i, c) in candidates.iter() {
+            if !digged.has_revealed_nearby(*c, near_threshold) {
+                digged.dig(*c);
+                policies.push(Box::new(IncreasingPolicy::new(
+                    *c,
+                    self.path_id + *i,
+                    self.bad_paths.clone(),
+                )));
             }
         }
 
+        self.path_id += 10000;
         self.iter += 1;
 
         policies
@@ -70,14 +83,18 @@ struct IncreasingPolicy {
     count: usize,
     target: Coordinate,
     total_damage: i32,
+    id: usize,
+    bad_paths: Rc<RefCell<HashSet<usize>>>,
 }
 
 impl IncreasingPolicy {
-    fn new(target: Coordinate) -> Self {
+    fn new(target: Coordinate, id: usize, bad_paths: Rc<RefCell<HashSet<usize>>>) -> Self {
         Self {
             count: 0,
             target,
             total_damage: 0,
+            id,
+            bad_paths,
         }
     }
 }
@@ -95,11 +112,23 @@ impl Policy for IncreasingPolicy {
         result
     }
 
-    fn give_up(&self) -> bool {
-        self.total_damage >= 1000
+    fn give_up(&mut self) -> bool {
+        let give_up = self.total_damage >= 1000;
+
+        if give_up {
+            // ギブアップになったら同じパスのマスは全てキャンセルする
+            // 最終日効果で実装がぐちゃぐちゃになってしまった
+            self.bad_paths.borrow_mut().insert(self.id);
+        }
+
+        give_up
     }
 
     fn comment(&self) -> Vec<String> {
         vec![]
+    }
+
+    fn cancelled(&self) -> bool {
+        self.bad_paths.borrow().contains(&self.id)
     }
 }
