@@ -39,13 +39,11 @@ ConsoleApp.Run(args, async ([Option("d")] string directoryPath, [Option("j")] st
     {
         if (result.Score == 0)
         {
-            Console.WriteLine($"seed{result.Seed}: 0");
             continue;
         }
 
         var relativeScore = (double)minScoreDict[result.Seed] / result.Score;
         total += relativeScore;
-        Console.WriteLine($"seed{result.Seed:0000}: {relativeScore:0.0000}");
     }
 
     total /= targetStats.Results.Length;

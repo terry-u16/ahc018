@@ -48,6 +48,11 @@ impl MapState {
         }
     }
 
+    pub fn mark_give_up(&mut self, c: Coordinate) {
+        self.damages[c] = 2500;
+        self.digged.mark_revealed(c);
+    }
+
     pub fn get_pred_sturdiness(&self, c: Coordinate, sigma: f64) -> i32 {
         self.prediction.get_pred_value(c, sigma).round() as i32
     }
@@ -73,7 +78,7 @@ impl MapState {
         for row in 0..self.map_size {
             for col in 0..self.map_size {
                 let c = Coordinate::new(row, col);
-                if self.digged.is_digged(c) {
+                if self.digged.is_revealed(c) {
                     let x = DVector::from_vec(vec![row as f64, col as f64]);
                     let y = (self.damages[c] as f64).sqrt();
                     self.gaussean.add_data(x, y);
@@ -145,6 +150,7 @@ impl MapState {
 
 const DIGGED_FLAG: u8 = 1 << 0;
 const WATER_FLAG: u8 = 1 << 1;
+const REVEALED_FLAG: u8 = 1 << 2;
 
 #[derive(Debug, Clone)]
 pub struct DiggedMap {
@@ -172,6 +178,7 @@ impl DiggedMap {
     pub fn dig(&mut self, c: Coordinate) {
         assert!((self.flags[c] & DIGGED_FLAG) == 0);
         self.flags[c] |= DIGGED_FLAG;
+        self.mark_revealed(c);
         let c_index = c.to_index(self.map_size);
 
         // 水源だったら超頂点と繋ぐ
@@ -189,8 +196,16 @@ impl DiggedMap {
         }
     }
 
+    fn mark_revealed(&mut self, c: Coordinate) {
+        self.flags[c] |= REVEALED_FLAG
+    }
+
     pub fn is_digged(&self, c: Coordinate) -> bool {
         (self.flags[c] & DIGGED_FLAG) > 0
+    }
+
+    pub fn is_revealed(&self, c: Coordinate) -> bool {
+        (self.flags[c] & REVEALED_FLAG) > 0
     }
 
     #[allow(dead_code)]
@@ -199,7 +214,7 @@ impl DiggedMap {
         self.dsu.same(c_index, self.water_master())
     }
 
-    pub fn has_digged_nearby(&self, c: Coordinate, dist: usize) -> bool {
+    pub fn has_revealed_nearby(&self, c: Coordinate, dist: usize) -> bool {
         let row0 = c.row.saturating_sub(dist);
         let row1 = (c.row + dist).min(self.map_size - 1);
 
@@ -210,7 +225,7 @@ impl DiggedMap {
             let col1 = (c.col + d).min(self.map_size - 1);
 
             for col in col0..=col1 {
-                if self.is_digged(Coordinate::new(row, col)) {
+                if self.is_revealed(Coordinate::new(row, col)) {
                     return true;
                 }
             }

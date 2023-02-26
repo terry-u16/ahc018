@@ -1,5 +1,5 @@
-use super::{IncreasingPolicy, Policy, Strategy};
-use crate::input::Input;
+use super::{Policy, Strategy};
+use crate::{common::grid::Coordinate, input::Input, map::MapState};
 
 pub struct RandomBoringStrategy {
     stage: usize,
@@ -51,5 +51,37 @@ impl Strategy for RandomBoringStrategy {
 
     fn is_completed(&self) -> bool {
         self.stage == 3
+    }
+}
+
+struct IncreasingPolicy {
+    count: usize,
+    target: Coordinate,
+}
+
+impl IncreasingPolicy {
+    fn new(target: Coordinate) -> Self {
+        Self { count: 0, target }
+    }
+}
+
+impl Policy for IncreasingPolicy {
+    fn target(&self) -> Coordinate {
+        self.target
+    }
+
+    fn next_power(&mut self, _map: &MapState) -> i32 {
+        const POWER_SERIES: [i32; 5] = [20, 30, 50, 100, 200];
+        let result = POWER_SERIES[self.count.min(POWER_SERIES.len() - 1)];
+        self.count += 1;
+        result
+    }
+
+    fn give_up(&self) -> bool {
+        false
+    }
+
+    fn comment(&self) -> Vec<String> {
+        vec![]
     }
 }

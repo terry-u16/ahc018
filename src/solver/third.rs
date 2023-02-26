@@ -4,7 +4,7 @@ use super::{
 };
 use crate::{
     common::grid::Coordinate, gaussean_process::GaussianPredictor, input::Input, map::MapState,
-    solver::IncreasingPolicy, ChangeMinMax,
+    ChangeMinMax,
 };
 use itertools::{izip, Itertools};
 use nalgebra::{DMatrix, DVector};
@@ -72,11 +72,16 @@ impl PreBoringChildStrategy {
             is_completed: false,
         }
     }
+
+    fn gen_increasing_policy(c: Coordinate, map: &MapState) -> IncreasingPolicy {
+        let two_sigma = map.get_pred_sturdiness(c, -3.0);
+        IncreasingPolicy::new(c, two_sigma)
+    }
 }
 
 impl Strategy for PreBoringChildStrategy {
     fn get_next_policies(&mut self, _input: &Input, map: &mut MapState) -> Vec<Box<dyn Policy>> {
-        const STRIDE: usize = 10;
+        const STRIDE: usize = 8;
         let mut digged = map.digged.clone();
         let mut strategies: Vec<Box<dyn Policy>> = vec![];
 
@@ -84,14 +89,14 @@ impl Strategy for PreBoringChildStrategy {
             let mut last_index = 0;
 
             if !digged.is_digged(path[0]) {
-                strategies.push(Box::new(IncreasingPolicy::new(path[0])));
+                strategies.push(Box::new(Self::gen_increasing_policy(path[0], map)));
                 digged.dig(path[0]);
             }
 
             for i in 1..(path.len() - 1) {
                 if !digged.is_digged(path[i]) {
                     if i - last_index >= STRIDE {
-                        strategies.push(Box::new(IncreasingPolicy::new(path[i])));
+                        strategies.push(Box::new(Self::gen_increasing_policy(path[i], map)));
                         digged.dig(path[i]);
                         last_index = i;
                     }
@@ -101,7 +106,10 @@ impl Strategy for PreBoringChildStrategy {
             }
 
             if !digged.is_digged(path[path.len() - 1]) {
-                strategies.push(Box::new(IncreasingPolicy::new(path[path.len() - 1])));
+                strategies.push(Box::new(Self::gen_increasing_policy(
+                    path[path.len() - 1],
+                    map,
+                )));
                 digged.dig(path[path.len() - 1]);
             }
         }
@@ -468,5 +476,48 @@ impl Policy for DpPolicy {
             format!("expected: {}", self.pred_expected),
             format!("stddev  : {}", self.pred_std_dev),
         ]
+    }
+
+    fn give_up(&self) -> bool {
+        false
+    }
+}
+
+struct IncreasingPolicy {
+    count: usize,
+    target: Coordinate,
+    power_series: Vec<i32>,
+}
+
+impl IncreasingPolicy {
+    fn new(target: Coordinate, two_sigma: i32) -> Self {
+        let first = two_sigma.max(15);
+        let power_series = vec![first, 10, 20, 30, 50, 100];
+
+        Self {
+            count: 0,
+            target,
+            power_series,
+        }
+    }
+}
+
+impl Policy for IncreasingPolicy {
+    fn target(&self) -> Coordinate {
+        self.target
+    }
+
+    fn next_power(&mut self, _map: &MapState) -> i32 {
+        let result = self.power_series[self.count.min(self.power_series.len() - 1)];
+        self.count += 1;
+        result
+    }
+
+    fn give_up(&self) -> bool {
+        false
+    }
+
+    fn comment(&self) -> Vec<String> {
+        vec![]
     }
 }
