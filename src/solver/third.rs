@@ -336,7 +336,7 @@ impl DpPolicy {
         let task_queue = Self::calc_power_dp(input, &sturdiness, &cumulative_dist, coef);
 
         // 3σやってもダメだったら適当にやる
-        let emergency_power = input.exhausting_energy * 5;
+        let emergency_power = input.exhausting_energy * 10;
 
         Self {
             coordinate: c,
@@ -383,14 +383,18 @@ impl DpPolicy {
 
         // 真ん中から左方向に数値積分
         // 台形公式で十分やろ
+        // 10以下に数字が来てしまうと嬉しくないので、2σ範囲内に入らないよう雑に歪ませる
+        let std_dev = variance.sqrt();
+        let left_std_dev = ((expected - 10.0) * 0.5).min(std_dev).max(2.0);
+        let left_variance = left_std_dev * left_std_dev;
         let mut cumulative_dists = vec![0.0; sturdinesses.len()];
         let mut prev_point = expected;
         let mut cumulative_dist = 0.5;
-        let mut right = Self::normal_prob_dist(expected, variance, prev_point);
+        let mut right = Self::normal_prob_dist(expected, left_variance, prev_point);
         for i in (0..=center).rev() {
             let x = sturdinesses[i] as f64;
             let d = prev_point - x;
-            let left = Self::normal_prob_dist(expected, variance, x);
+            let left = Self::normal_prob_dist(expected, left_variance, x);
             cumulative_dist -= (left + right) * d / 2.0;
             cumulative_dists[i] = cumulative_dist;
             right = left;
@@ -398,6 +402,7 @@ impl DpPolicy {
         }
 
         // 右方向
+        // こっちは普通に分散を使う
         let mut prev_point = expected;
         let mut cumulative_dist = 0.5;
         let mut left = Self::normal_prob_dist(expected, variance, prev_point);
