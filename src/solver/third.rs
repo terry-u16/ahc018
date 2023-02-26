@@ -81,7 +81,7 @@ impl PreBoringChildStrategy {
 
 impl Strategy for PreBoringChildStrategy {
     fn get_next_policies(&mut self, _input: &Input, map: &mut MapState) -> Vec<Box<dyn Policy>> {
-        const STRIDE: usize = 10;
+        const STRIDE: usize = 8;
         let mut digged = map.digged.clone();
         let mut strategies: Vec<Box<dyn Policy>> = vec![];
 
