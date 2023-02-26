@@ -242,6 +242,8 @@ impl FullPathChildStrategy {
         let target_points = Self::get_target_points(&self.paths[path_id], &digged_indices);
         let predictions = self.predict(path_id, &target_points, map);
         let path = &self.paths[path_id];
+        
+        // なぜか真面目に期待値DPするより謎の係数をかけた方が良い。なぜ？
         let coef = (5.0 - self.iter as f64 * 0.5).max(1.0);
 
         let mut policies = vec![];
@@ -337,7 +339,7 @@ impl DpPolicy {
         let task_queue = Self::calc_power_dp(input, &sturdiness, &cumulative_dist, coef);
 
         // 3σやってもダメだったら適当にやる
-        let emergency_power = input.exhausting_energy * 10;
+        let emergency_power = input.exhausting_energy * 3;
 
         Self {
             coordinate: c,
