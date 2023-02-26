@@ -55,7 +55,6 @@ impl Strategy for ConnectionStrategy {
 
         self.child_strategy.get_next_policies(input, map)
     }
-
     fn is_completed(&self) -> bool {
         self.stage == 1 && self.child_strategy.is_completed()
     }
@@ -121,6 +120,7 @@ pub struct FullPathChildStrategy {
     is_completed: bool,
     paths: Vec<Vec<Coordinate>>,
     gausseans: Vec<GaussianPredictor>,
+    iter: usize,
 }
 
 impl FullPathChildStrategy {
@@ -131,6 +131,7 @@ impl FullPathChildStrategy {
             is_completed: false,
             paths,
             gausseans,
+            iter: 0,
         }
     }
 
@@ -233,6 +234,7 @@ impl FullPathChildStrategy {
         let target_points = Self::get_target_points(&self.paths[path_id], &digged_indices);
         let predictions = self.predict(path_id, &target_points, map);
         let path = &self.paths[path_id];
+        let coef = (5.0 - self.iter as f64 * 0.5).max(1.0);
 
         let mut policies = vec![];
 
@@ -240,7 +242,7 @@ impl FullPathChildStrategy {
             // 本来は2乗した空間での正規分布を考える必要があるが、
             // めんどくさいので上側と下側（±σ）を2で割ったものを標準偏差としている
             let std_dev = (upper - lower) / 2.0;
-            let policy = DpPolicy::new(input, path[i], *mean, std_dev * std_dev);
+            let policy = DpPolicy::new(input, path[i], *mean, std_dev * std_dev, coef);
             policies.push(policy);
         }
 
@@ -301,6 +303,8 @@ impl Strategy for FullPathChildStrategy {
             self.is_completed = true;
         }
 
+        self.iter += 1;
+
         policies
     }
 
@@ -318,10 +322,10 @@ struct DpPolicy {
 }
 
 impl DpPolicy {
-    fn new(input: &Input, c: Coordinate, expected: f64, variance: f64) -> Self {
+    fn new(input: &Input, c: Coordinate, expected: f64, variance: f64, coef: f64) -> Self {
         let sturdiness = Self::get_sturdiness_points(expected, variance);
         let cumulative_dist = Self::get_cumulative_dist(expected, variance, &sturdiness);
-        let task_queue = Self::calc_power_dp(input, &sturdiness, &cumulative_dist);
+        let task_queue = Self::calc_power_dp(input, &sturdiness, &cumulative_dist, coef);
 
         // 3σやってもダメだったら適当にやる
         let emergency_power = input.exhausting_energy * 5;
@@ -410,15 +414,21 @@ impl DpPolicy {
             * (-diff * diff / (2.0 * variance)).exp()
     }
 
-    fn calc_power_dp(input: &Input, sturdiness: &[i32], cumulative_dist: &[f64]) -> VecDeque<i32> {
+    fn calc_power_dp(
+        input: &Input,
+        sturdiness: &[i32],
+        cumulative_dist: &[f64],
+        coef: f64,
+    ) -> VecDeque<i32> {
         let mut dp = vec![std::f64::MAX / 2.0; sturdiness.len()];
         let mut from = vec![0; sturdiness.len()];
         dp[0] = 0.0;
 
         for i in 0..dp.len() {
             for j in (i + 1)..dp.len() {
-                let power = sturdiness[j] - sturdiness[i] + input.exhausting_energy;
-                let next = dp[i] + (1.0 - cumulative_dist[i]) * power as f64;
+                let power =
+                    (sturdiness[j] - sturdiness[i]) as f64 * coef + input.exhausting_energy as f64;
+                let next = dp[i] + (1.0 - cumulative_dist[i]) * power;
 
                 if dp[j].change_min(next) {
                     from[j] = i;

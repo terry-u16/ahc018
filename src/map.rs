@@ -86,7 +86,7 @@ impl MapState {
             }
         }
 
-        if self.prediction_count < 4 {
+        if self.prediction_count < 5 {
             // パラメータをグリッドサーチ
             let t1_cands = (3..10).map(|v| 2.0f64.powi(v)).collect_vec();
             let t2_cands = (2..12)
