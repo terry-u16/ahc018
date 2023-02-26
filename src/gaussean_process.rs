@@ -103,7 +103,7 @@ impl GaussianPredictor {
         let diff = x0 - x1;
         let norm = diff.component_mul(&diff).sum();
         let kernel1 = self.params.theta1 * (-norm / self.params.theta2).exp();
-        let kernel2 = self.params.theta1 * 0.1 * (-norm / (self.params.theta2 * 0.3 * 0.3)).exp();
+        let kernel2 = self.params.theta1 * 0.1 * (-norm / (self.params.theta2 * 0.2 * 0.2)).exp();
         let mut kernel = kernel1 + kernel2;
         if i == j {
             kernel += self.params.theta3;
