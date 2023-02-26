@@ -102,7 +102,9 @@ impl GaussianPredictor {
     fn kernel(&self, x0: &DVector<f64>, x1: &DVector<f64>, i: usize, j: usize) -> f64 {
         let diff = x0 - x1;
         let norm = diff.component_mul(&diff).sum();
-        let mut kernel = self.params.theta1 * (-norm / self.params.theta2).exp();
+        let kernel1 = self.params.theta1 * (-norm / self.params.theta2).exp();
+        let kernel2 = self.params.theta1 * 0.1 * (-norm / (self.params.theta2 * 0.3 * 0.3)).exp();
+        let mut kernel = kernel1 + kernel2;
         if i == j {
             kernel += self.params.theta3;
         }
