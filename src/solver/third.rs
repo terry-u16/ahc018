@@ -492,7 +492,7 @@ impl Policy for IncreasingPolicy {
     }
 
     fn next_power(&mut self, _map: &MapState) -> i32 {
-        const POWER_SERIES: [i32; 5] = [20, 30, 50, 100, 200];
+        const POWER_SERIES: [i32; 6] = [15, 10, 20, 30, 50, 100];
         let result = POWER_SERIES[self.count.min(POWER_SERIES.len() - 1)];
         self.count += 1;
         result
