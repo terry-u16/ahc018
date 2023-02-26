@@ -94,7 +94,7 @@ impl Policy for IncreasingPolicy {
     }
 
     fn give_up(&self) -> bool {
-        self.total_damage >= 2500
+        self.total_damage >= 1000
     }
 
     fn comment(&self) -> Vec<String> {

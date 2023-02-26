@@ -49,7 +49,7 @@ impl MapState {
     }
 
     pub fn mark_give_up(&mut self, c: Coordinate) {
-        self.damages[c] = 4000;
+        self.damages[c] = 2500;
         self.digged.mark_revealed(c);
     }
 
