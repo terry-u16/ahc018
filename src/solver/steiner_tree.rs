@@ -200,9 +200,9 @@ struct MoveWaypoint {
 impl MoveWaypoint {
     fn generate(env: &Environment, state: &State, rng: &mut Pcg64Mcg) -> Option<MoveWaypoint> {
         fn gen_diff(rng: &mut Pcg64Mcg) -> f64 {
-            // ±[0.0, 16.0) からランダムに選択
+            // ±[0.0, 128.0) からランダムに選択
             const MIN_POW2: f64 = 0.0;
-            const MAX_POW2: f64 = 4.0;
+            const MAX_POW2: f64 = 7.0;
 
             let sign = if rng.gen_bool(0.5) { 1.0 } else { -1.0 };
             let diff = 2.0f64.powf(rng.gen_range(MIN_POW2, MAX_POW2)) - 1.0;
@@ -280,7 +280,7 @@ fn generate_action(env: &Environment, state: &State, rng: &mut Pcg64Mcg) -> Box<
 pub fn calc_steiner_tree_paths(input: &Input, map: &MapState, sigma: f64) -> Vec<Vec<Coordinate>> {
     let env = Environment::new(input, map, sigma);
     let state = State::new();
-    let state = annealing(&env, state, 0.05);
+    let state = annealing(&env, state, 0.1);
     restore_steiner_paths(&env, &state, map, sigma)
 }
 
@@ -300,7 +300,7 @@ fn annealing(env: &Environment, initial_state: State, duration: f64) -> State {
     let duration_inv = 1.0 / duration;
     let since = std::time::Instant::now();
 
-    let temp0 = 5e1;
+    let temp0 = 1e1;
     let temp1 = 1e0;
     let mut inv_temp = 1.0 / temp0;
 
