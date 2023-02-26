@@ -42,7 +42,7 @@ impl Strategy for SkippingPathStrategy {
         let paths = calc_steiner_tree_paths(input, map, SIGMA_SERIES[self.iter]);
         let mut candidates = paths.iter().flatten().copied().collect_vec();
         candidates.sort_by_cached_key(|&c| {
-            let stddev = map.get_pred_sturdiness(c, 0.0) - map.get_pred_sturdiness(c, -1.0);
+            let stddev = map.get_pred_sturdiness(c, 0.0) - map.get_pred_sturdiness(c, -0.1);
             Reverse(stddev)
         });
 
