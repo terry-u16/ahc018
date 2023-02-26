@@ -48,6 +48,11 @@ impl MapState {
         }
     }
 
+    pub fn mark_give_up(&mut self, c: Coordinate) {
+        self.damages[c] = 4000;
+        self.digged.mark_revealed(c);
+    }
+
     pub fn get_pred_sturdiness(&self, c: Coordinate, sigma: f64) -> i32 {
         self.prediction.get_pred_value(c, sigma).round() as i32
     }
@@ -73,7 +78,7 @@ impl MapState {
         for row in 0..self.map_size {
             for col in 0..self.map_size {
                 let c = Coordinate::new(row, col);
-                if self.digged.is_digged(c) {
+                if self.digged.is_revealed(c) {
                     let x = DVector::from_vec(vec![row as f64, col as f64]);
                     let y = (self.damages[c] as f64).sqrt();
                     self.gaussean.add_data(x, y);
@@ -191,7 +196,7 @@ impl DiggedMap {
         }
     }
 
-    pub fn mark_revealed(&mut self, c: Coordinate) {
+    fn mark_revealed(&mut self, c: Coordinate) {
         self.flags[c] |= REVEALED_FLAG
     }
 

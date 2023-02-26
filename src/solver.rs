@@ -39,7 +39,7 @@ impl<'a> Solver<'a> {
     pub fn get_next_action(&mut self) -> Action {
         while let Some(p) = self.policies.front() {
             if p.give_up() {
-                self.map.digged.mark_revealed(p.target());
+                self.map.mark_give_up(p.target());
                 self.policies.pop_front();
             } else {
                 break;
